@@ -1,0 +1,39 @@
+# TasteMaker - Simple Docker Compose Setup
+#
+# This configuration provides a simple, single-container deployment:
+# - SQLite database (stored in ./data)
+# - Single-user mode (no login required)
+# - Synchronous video processing (no Redis needed)
+#
+# Usage:
+#   cp .env.example .env
+#   # Add your ANTHROPIC_API_KEY to .env
+#   docker-compose up
+#
+# Access: http://localhost:8000
+
+version: '3.8'
+
+services:
+  tastemaker:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=sqlite:////app/data/tastemaker.db
+      - SINGLE_USER_MODE=true
+      - ENABLE_BACKGROUND_JOBS=false
+    volumes:
+      # Persist SQLite database
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  tastemaker-data:

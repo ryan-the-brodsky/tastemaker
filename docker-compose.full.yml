@@ -1,0 +1,108 @@
+# TasteMaker - Full Docker Compose Setup
+#
+# This configuration provides a complete production-like deployment:
+# - PostgreSQL database
+# - Redis for background job queue
+# - Celery worker for video processing
+# - Multi-user authentication
+#
+# Usage:
+#   cp .env.example .env
+#   # Add your ANTHROPIC_API_KEY to .env
+#   # Set SINGLE_USER_MODE=false if you want multi-user auth
+#   docker-compose -f docker-compose.full.yml up
+#
+# Access: http://localhost:8000
+
+version: '3.8'
+
+services:
+  # ==========================================================================
+  # Main Application
+  # ==========================================================================
+  tastemaker:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=postgresql://tastemaker:tastemaker@postgres:5432/tastemaker
+      - SINGLE_USER_MODE=${SINGLE_USER_MODE:-false}
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - ENABLE_BACKGROUND_JOBS=true
+      - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=http://localhost:8000,http://localhost:5173
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ==========================================================================
+  # Celery Worker (for background video processing)
+  # ==========================================================================
+  celery-worker:
+    build: .
+    command: >
+      celery -A celery_app.celery_app worker
+      --loglevel=info
+      --concurrency=2
+    working_dir: /app/src
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DATABASE_URL=postgresql://tastemaker:tastemaker@postgres:5432/tastemaker
+      - ENABLE_BACKGROUND_JOBS=true
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      # Share temp directory for video processing
+      - video-temp:/tmp
+
+  # ==========================================================================
+  # PostgreSQL Database
+  # ==========================================================================
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=tastemaker
+      - POSTGRES_PASSWORD=tastemaker
+      - POSTGRES_DB=tastemaker
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tastemaker"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ==========================================================================
+  # Redis (for Celery message broker)
+  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  redis-data:
+  video-temp:

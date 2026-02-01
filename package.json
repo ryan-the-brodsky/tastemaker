@@ -1,0 +1,12 @@
+{
+  "name": "tastemaker",
+  "version": "2.0.0",
+  "description": "Extract UI/UX taste preferences through A/B comparisons",
+  "scripts": {
+    "build": "cd frontend && npm install --include=dev && npm run build",
+    "heroku-postbuild": "npm run build"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}

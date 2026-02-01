@@ -1,0 +1,53 @@
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Build outputs
+dist/
+build/
+*.egg-info/
+
+# Environment
+.env
+.env.local
+.env.*.local
+*.log
+
+# Database (local)
+*.db
+*.sqlite
+*.sqlite3
+/data/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary
+*.tmp
+*.temp
+/tmp/
+
+# Local claude config
+.claude/
+screenshots/
+
+# Development artifacts
+RALPH*.md
+PROGRESS.md
+puppeteer*.js
+
+# Test coverage
+.coverage
+htmlcov/
+.pytest_cache/
+
+# Upload directories
+uploads/

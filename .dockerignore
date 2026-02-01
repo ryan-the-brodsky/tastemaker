@@ -1,0 +1,59 @@
+# Git
+.git
+.gitignore
+
+# Dependencies (will be installed in container)
+node_modules
+venv
+__pycache__
+*.pyc
+.pytest_cache
+
+# Environment files (should be passed via docker-compose)
+.env
+.env.local
+.env.*.local
+
+# Build outputs (frontend build happens in container)
+frontend/dist
+backend/dist
+*.egg-info
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local data
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+/tmp/
+
+# Claude Code config
+.claude/
+screenshots/
+
+# Documentation (not needed in container)
+*.md
+!README.md
+
+# Test files
+tests/
+*_test.py
+test_*.py
+conftest.py
+.coverage
+htmlcov/
