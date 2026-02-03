@@ -3,7 +3,7 @@ Celery Tasks for Background Processing
 
 Contains long-running tasks that are executed by Celery workers:
 - Video processing and frame extraction
-- Claude AI analysis of frames
+- AI analysis of frames
 - Playwright replay sessions
 
 NOTE: When ENABLE_BACKGROUND_JOBS=false (default), these tasks run synchronously
@@ -18,9 +18,8 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
 
-import anthropic
-
 from config import settings
+from ai_providers import get_default_provider, ImageContent, ModelTier, AIProvider
 from celery_app import celery_app, is_celery_available
 from db_config import SessionLocal
 from models import (
@@ -40,15 +39,15 @@ from interactive_baseline_rules import (
 logger = logging.getLogger(__name__)
 
 
-def _get_anthropic_client():
-    """Get Anthropic client, checking for API key."""
-    if not settings.has_anthropic_api_key:
+def _get_ai_provider() -> AIProvider:
+    """Get AI provider, checking for API key."""
+    if not settings.has_any_ai_provider:
         raise ValueError(
-            "ANTHROPIC_API_KEY is not configured. "
-            "Video audit requires Claude API for frame analysis. "
-            "Get a key at: https://console.anthropic.com/"
+            "No AI provider configured. "
+            "Video audit requires an AI API for frame analysis. "
+            "Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env"
         )
-    return anthropic.Anthropic(api_key=settings.anthropic_api_key)
+    return get_default_provider()
 
 
 # ============================================================================
@@ -63,7 +62,7 @@ def process_video_audit_sync(recording_id: int, video_path: str, session_id: int
     Same logic as the Celery task, but runs in the request thread.
     """
     db = SessionLocal()
-    client = _get_anthropic_client()
+    provider = _get_ai_provider()
 
     try:
         logger.info(f"Starting synchronous video audit for recording {recording_id}")
@@ -120,9 +119,9 @@ def process_video_audit_sync(recording_id: int, video_path: str, session_id: int
             db.add(frame)
             db.commit()
 
-            # Extract values using Claude
+            # Extract values using AI
             try:
-                values = _extract_values_from_frame(frame_data['path'], client)
+                values = _extract_values_from_frame(frame_data['path'], provider)
                 frame.extracted_values = values
                 frame.extraction_status = "completed"
                 extracted_values.append(values)
@@ -259,56 +258,34 @@ def process_playwright_audit_sync(
         db.close()
 
 
-def _extract_values_from_frame(frame_path: str, client=None) -> Dict[str, Any]:
+def _extract_values_from_frame(frame_path: str, provider: AIProvider = None) -> Dict[str, Any]:
     """
-    Extract values from a frame using Claude Vision.
+    Extract values from a frame using AI Vision.
 
     Args:
         frame_path: Path to the frame image
-        client: Optional Anthropic client (creates one if not provided)
+        provider: Optional AI provider (creates one if not provided)
 
     Returns:
         Dict of extracted values
     """
-    if client is None:
-        client = _get_anthropic_client()
+    if provider is None:
+        provider = _get_ai_provider()
 
-    # Read and encode image
-    with open(frame_path, "rb") as f:
-        image_data = base64.standard_b64encode(f.read()).decode("utf-8")
+    # Create image content from file
+    image = ImageContent.from_file(frame_path)
 
-    # Determine media type
-    suffix = Path(frame_path).suffix.lower()
-    media_type = "image/png" if suffix == ".png" else "image/jpeg"
-
-    # Call Claude with vision
+    # Call AI with vision
     try:
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4096,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_data,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": get_extraction_prompt("full")
-                        }
-                    ],
-                }
-            ],
+        response = provider.complete_with_vision(
+            text_prompt=get_extraction_prompt("full"),
+            images=[image],
+            model_tier=ModelTier.CAPABLE,
+            max_tokens=4096
         )
 
         # Parse response
-        response_text = message.content[0].text
+        response_text = response.content
 
         # Clean up JSON if wrapped in code blocks
         if "```json" in response_text:
@@ -319,10 +296,10 @@ def _extract_values_from_frame(frame_path: str, client=None) -> Dict[str, Any]:
         return json.loads(response_text.strip())
 
     except json.JSONDecodeError as e:
-        logger.warning(f"Failed to parse Claude response as JSON: {e}")
-        return {"extraction_error": "Failed to parse Claude response as JSON"}
+        logger.warning(f"Failed to parse AI response as JSON: {e}")
+        return {"extraction_error": "Failed to parse AI response as JSON"}
     except Exception as e:
-        logger.error(f"Claude extraction failed: {e}")
+        logger.error(f"AI extraction failed: {e}")
         return {"extraction_error": str(e)}
 
 

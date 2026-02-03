@@ -82,12 +82,24 @@ def health_check():
     Returns information about the current configuration for debugging
     and for frontend single-user mode detection.
     """
+    # Determine active AI provider
+    ai_provider_status = "not_configured"
+    if settings.has_any_ai_provider:
+        try:
+            from ai_providers import get_default_provider
+            provider = get_default_provider()
+            ai_provider_status = provider.name
+        except Exception:
+            ai_provider_status = "error"
+
     return {
         "status": "ok",
         "config": {
             "single_user_mode": settings.single_user_mode,
             "database_type": "sqlite" if settings.is_sqlite else "postgresql",
+            "ai_provider": ai_provider_status,
             "anthropic_api": "configured" if settings.has_anthropic_api_key else "not_configured",
+            "openai_api": "configured" if settings.has_openai_api_key else "not_configured",
             "background_jobs": "enabled" if settings.enable_background_jobs else "disabled",
         }
     }

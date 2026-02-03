@@ -115,18 +115,26 @@ Requirements:
 Return ONLY the code, no explanations or markdown formatting."""
 
     try:
-        import anthropic
-        client = anthropic.Anthropic()
+        from ai_providers import get_default_provider, AIMessage, ModelTier, has_any_provider
 
-        message = client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=2000,
-            messages=[
-                {"role": "user", "content": prompt}
-            ]
+        if not has_any_provider():
+            # No AI provider configured - return template code
+            return GenerateResponse(code=_get_template_code(
+                request.component_type,
+                request.variant,
+                request.output_format,
+                session.chosen_colors,
+                session.chosen_typography
+            ))
+
+        provider = get_default_provider()
+        response = provider.complete(
+            messages=[AIMessage(role="user", content=prompt)],
+            model_tier=ModelTier.CAPABLE,
+            max_tokens=2000
         )
 
-        code = message.content[0].text
+        code = response.content
 
         # Clean up code if it's wrapped in markdown
         if code.startswith("```"):
@@ -140,8 +148,8 @@ Return ONLY the code, no explanations or markdown formatting."""
 
         return GenerateResponse(code=code)
 
-    except ImportError:
-        # Anthropic not installed - return template code
+    except ValueError:
+        # No AI provider configured - return template code
         return GenerateResponse(code=_get_template_code(
             request.component_type,
             request.variant,

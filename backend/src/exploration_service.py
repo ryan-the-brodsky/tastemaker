@@ -1,7 +1,7 @@
 """
 Exploration service for trie-style color and typography discovery.
 
-Uses Claude API to generate contextual options based on:
+Uses AI API to generate contextual options based on:
 - Project description
 - Previous selections (gradient descent toward preferred styles)
 - Current exploration depth
@@ -9,37 +9,35 @@ Uses Claude API to generate contextual options based on:
 Instead of binary A/B comparisons, shows 5 options that progressively
 narrow down as users make selections.
 
-NOTE: Requires ANTHROPIC_API_KEY to be set. Falls back to static options
-if API is not available.
+NOTE: Requires an AI provider (ANTHROPIC_API_KEY or OPENAI_API_KEY).
+Falls back to static options if no provider is available.
 """
 import json
 import os
 from typing import List, Dict, Optional, Any
-import anthropic
 
 from config import settings
+from ai_providers import get_default_provider, AIMessage, ModelTier, has_any_provider
 
 
 class ExplorationService:
-    """Claude-powered exploration for colors and typography."""
+    """AI-powered exploration for colors and typography."""
 
     def __init__(self):
-        self._client = None
-        self._api_available = settings.has_anthropic_api_key
-        self.model = "claude-haiku-4-5-20251001"  # Cost-optimized
+        self._provider = None
+        self._api_available = settings.has_any_ai_provider
 
     @property
-    def client(self):
-        """Lazy initialization of Anthropic client."""
-        if self._client is None:
+    def provider(self):
+        """Lazy initialization of AI provider."""
+        if self._provider is None:
             if not self._api_available:
                 raise ValueError(
-                    "ANTHROPIC_API_KEY is not configured. "
-                    "Please add your API key to .env file. "
-                    "Get a key at: https://console.anthropic.com/"
+                    "No AI provider configured. "
+                    "Please add ANTHROPIC_API_KEY or OPENAI_API_KEY to .env file."
                 )
-            self._client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        return self._client
+            self._provider = get_default_provider()
+        return self._provider
 
     def generate_color_options(
         self,
@@ -109,13 +107,13 @@ REQUIREMENTS:
 6. ONLY return valid JSON, no other text"""
 
         try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=1500,
-                messages=[{"role": "user", "content": prompt}]
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
+                max_tokens=1500
             )
 
-            response_text = message.content[0].text
+            response_text = response.content
 
             # Parse JSON from response
             if "```json" in response_text:
@@ -129,7 +127,7 @@ REQUIREMENTS:
             return result
 
         except Exception as e:
-            # Fallback to static options if Claude fails
+            # Fallback to static options if AI fails
             return self._get_fallback_color_options(color_role, exploration_depth)
 
     def generate_typography_options(
@@ -205,13 +203,13 @@ REQUIREMENTS:
 6. ONLY return valid JSON, no other text"""
 
         try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=1500,
-                messages=[{"role": "user", "content": prompt}]
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
+                max_tokens=1500
             )
 
-            response_text = message.content[0].text
+            response_text = response.content
 
             # Parse JSON from response
             if "```json" in response_text:
@@ -225,7 +223,7 @@ REQUIREMENTS:
             return result
 
         except Exception as e:
-            # Fallback to static options if Claude fails
+            # Fallback to static options if AI fails
             return self._get_fallback_typography_options(font_role, exploration_depth)
 
     def generate_full_palette_options(
@@ -304,13 +302,13 @@ REQUIREMENTS:
 6. ONLY return valid JSON, no other text"""
 
         try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
+                max_tokens=2000
             )
 
-            response_text = message.content[0].text
+            response_text = response.content
 
             # Parse JSON from response
             if "```json" in response_text:
@@ -323,7 +321,7 @@ REQUIREMENTS:
             return result
 
         except Exception as e:
-            print(f"Claude API error: {e}")
+            print(f"AI API error: {e}")
             return self._get_fallback_palette_options(exploration_depth)
 
     def generate_full_typography_options(
@@ -400,13 +398,13 @@ REQUIREMENTS:
 6. ONLY return valid JSON, no other text"""
 
         try:
-            message = self.client.messages.create(
-                model=self.model,
-                max_tokens=2000,
-                messages=[{"role": "user", "content": prompt}]
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
+                max_tokens=2000
             )
 
-            response_text = message.content[0].text
+            response_text = response.content
 
             # Parse JSON from response
             if "```json" in response_text:
@@ -419,7 +417,7 @@ REQUIREMENTS:
             return result
 
         except Exception as e:
-            print(f"Claude API error: {e}")
+            print(f"AI API error: {e}")
             return self._get_fallback_typography_pairing_options(exploration_depth)
 
     def _get_depth_instruction(

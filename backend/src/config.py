@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # API Keys
     # ==========================================================================
     anthropic_api_key: Optional[str] = None
+    openai_api_key: Optional[str] = None
+
+    # ==========================================================================
+    # AI Provider Selection
+    # ==========================================================================
+    # Preferred AI provider when multiple API keys are configured
+    # Options: "anthropic", "openai", or leave empty for auto-detect
+    ai_provider: Optional[str] = None
 
     # ==========================================================================
     # Background Jobs
@@ -91,6 +99,16 @@ class Settings(BaseSettings):
     def has_anthropic_api_key(self) -> bool:
         """Check if Anthropic API key is configured."""
         return bool(self.anthropic_api_key)
+
+    @property
+    def has_openai_api_key(self) -> bool:
+        """Check if OpenAI API key is configured."""
+        return bool(self.openai_api_key)
+
+    @property
+    def has_any_ai_provider(self) -> bool:
+        """Check if any AI provider is configured."""
+        return self.has_anthropic_api_key or self.has_openai_api_key
 
     @property
     def effective_secret_key(self) -> str:

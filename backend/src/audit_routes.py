@@ -332,10 +332,26 @@ async def audit_screenshot(
     base64_image = base64.b64encode(contents).decode('utf-8')
     media_type = file.content_type or 'image/png'
 
-    # Step 1: Use Claude Vision to EXTRACT values (not judge them)
+    # Step 1: Use AI Vision to EXTRACT values (not judge them)
     try:
-        import anthropic
-        client = anthropic.Anthropic()
+        from ai_providers import get_default_provider, ImageContent, ModelTier, has_any_provider
+
+        if not has_any_provider():
+            return AuditResult(
+                violations=[
+                    Violation(
+                        rule_id="demo-001",
+                        severity="warning",
+                        property="color",
+                        expected=str(chosen_colors) if chosen_colors else "defined palette",
+                        found="unknown",
+                        message="No AI provider configured",
+                        suggestion="Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env"
+                    )
+                ],
+                summary="Demo mode - No AI provider configured for value extraction",
+                score=75
+            )
 
         extraction_prompt = """Analyze this UI screenshot and EXTRACT the following values.
 DO NOT judge whether they are good or bad - just extract the raw values.
@@ -369,32 +385,18 @@ Respond with ONLY valid JSON in this exact format:
 Be specific about hex colors. For contrast_pairs, include text/background pairs you can identify.
 Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation."""
 
-        message = client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=1500,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": base64_image,
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": extraction_prompt
-                        }
-                    ]
-                }
-            ]
+        provider = get_default_provider()
+        image = ImageContent.from_base64(base64_image, media_type)
+
+        response = provider.complete_with_vision(
+            text_prompt=extraction_prompt,
+            images=[image],
+            model_tier=ModelTier.CAPABLE,
+            max_tokens=1500
         )
 
         # Parse extracted values
-        response_text = message.content[0].text
+        response_text = response.content
 
         # Clean up potential markdown
         if "```json" in response_text:
@@ -435,8 +437,8 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
             summary="Could not extract values from screenshot. Try a clearer image.",
             score=50
         )
-    except ImportError:
-        # Anthropic not installed - return mock result
+    except ValueError as e:
+        # No AI provider configured
         return AuditResult(
             violations=[
                 Violation(
@@ -445,11 +447,11 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
                     property="color",
                     expected=str(chosen_colors) if chosen_colors else "defined palette",
                     found="unknown",
-                    message="Claude API not configured - install anthropic package",
-                    suggestion="pip install anthropic && set ANTHROPIC_API_KEY"
+                    message="No AI provider configured",
+                    suggestion="Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env"
                 )
             ],
-            summary="Demo mode - Claude Vision API not configured for value extraction",
+            summary="Demo mode - No AI provider configured for value extraction",
             score=75
         )
     except Exception as e:
@@ -547,8 +549,24 @@ async def audit_url(
 
     # Run through the same audit pipeline as screenshot audit
     try:
-        import anthropic
-        client = anthropic.Anthropic()
+        from ai_providers import get_default_provider, ImageContent, ModelTier, has_any_provider
+
+        if not has_any_provider():
+            return AuditResult(
+                violations=[
+                    Violation(
+                        rule_id="demo-001",
+                        severity="warning",
+                        property="url-audit",
+                        expected=str(chosen_colors) if chosen_colors else "defined palette",
+                        found="unknown",
+                        message="No AI provider configured",
+                        suggestion="Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env"
+                    )
+                ],
+                summary="Demo mode - No AI provider configured for URL audit",
+                score=75
+            )
 
         extraction_prompt = """Analyze this UI screenshot and EXTRACT the following values.
 DO NOT judge whether they are good or bad - just extract the raw values.
@@ -582,32 +600,18 @@ Respond with ONLY valid JSON in this exact format:
 Be specific about hex colors. For contrast_pairs, include text/background pairs you can identify.
 Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation."""
 
-        message = client.messages.create(
-            model="claude-3-sonnet-20240229",
-            max_tokens=1500,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": "image/png",
-                                "data": base64_image,
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": extraction_prompt
-                        }
-                    ]
-                }
-            ]
+        provider = get_default_provider()
+        image = ImageContent.from_base64(base64_image, "image/png")
+
+        response = provider.complete_with_vision(
+            text_prompt=extraction_prompt,
+            images=[image],
+            model_tier=ModelTier.CAPABLE,
+            max_tokens=1500
         )
 
         # Parse extracted values
-        response_text = message.content[0].text
+        response_text = response.content
 
         # Clean up potential markdown
         if "```json" in response_text:
@@ -648,7 +652,8 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
             summary="Could not extract values from URL screenshot. Try a different URL.",
             score=50
         )
-    except ImportError:
+    except ValueError as e:
+        # No AI provider configured
         return AuditResult(
             violations=[
                 Violation(
@@ -657,11 +662,11 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
                     property="url-audit",
                     expected=str(chosen_colors) if chosen_colors else "defined palette",
                     found="unknown",
-                    message="Claude API not configured - install anthropic package",
-                    suggestion="pip install anthropic && set ANTHROPIC_API_KEY"
+                    message="No AI provider configured",
+                    suggestion="Set ANTHROPIC_API_KEY or OPENAI_API_KEY in .env"
                 )
             ],
-            summary="Demo mode - Claude Vision API not configured for URL audit",
+            summary="Demo mode - No AI provider configured for URL audit",
             score=75
         )
     except Exception as e:
@@ -670,7 +675,7 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
         if "not_found" in error_str or "model" in error_str or "404" in error_str:
             return AuditResult(
                 violations=[],
-                summary=f"URL captured successfully. Claude API model not available for extraction.",
+                summary=f"URL captured successfully. AI API model not available for extraction.",
                 score=60
             )
         raise HTTPException(

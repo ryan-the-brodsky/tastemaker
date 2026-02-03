@@ -1,21 +1,21 @@
 """
-AI-powered component variation generation using Claude API.
+AI-powered component variation generation using AI API.
 
 HYBRID APPROACH:
-- Territory Mapping phase: Uses Claude API for creative, adaptive exploration
+- Territory Mapping phase: Uses AI API for creative, adaptive exploration
 - Dimension Isolation phase: Falls back to deterministic variation_service.py
   for precise single-property testing with established preferences
 
-NOTE: Requires ANTHROPIC_API_KEY to be set. If not configured, the service
-will raise an informative error when instantiated.
+NOTE: Requires an AI provider (ANTHROPIC_API_KEY or OPENAI_API_KEY).
+If not configured, the service will raise an informative error when instantiated.
 """
-import anthropic
 import json
 import time
 import os
 from typing import Dict, List, Any, Optional
 
 from config import settings
+from ai_providers import get_default_provider, AIMessage, ModelTier, AIProvider
 
 # System prompt for component generation
 COMPONENT_GENERATION_SYSTEM_PROMPT = """You are a UI design expert generating component variations for user preference extraction.
@@ -79,19 +79,17 @@ IMPORTANT: Both must be usable, polished designs - but VISUALLY DISTINCT so user
 
 class ComponentGenerationService:
     """
-    AI-powered component variation generation using Claude API.
-    Uses Claude Haiku for cost-effective generation (~$0.006/comparison).
+    AI-powered component variation generation using AI API.
+    Uses cost-effective models for efficient generation.
     """
 
     def __init__(self):
-        if not settings.has_anthropic_api_key:
+        if not settings.has_any_ai_provider:
             raise ValueError(
-                "ANTHROPIC_API_KEY is not configured. "
-                "Please add your API key to .env file. "
-                "Get a key at: https://console.anthropic.com/"
+                "No AI provider configured. "
+                "Please add ANTHROPIC_API_KEY or OPENAI_API_KEY to .env file."
             )
-        self.client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-        self.model = "claude-haiku-4-5-20251001"  # Cost-optimized Haiku
+        self.provider: AIProvider = get_default_provider()
 
     def generate_comparison_pair(
         self,
@@ -132,15 +130,15 @@ class ComponentGenerationService:
         prompt = self._build_prompt(component_type, phase, context, established_preferences, chosen_colors, chosen_typography)
 
         try:
-            response = self.client.messages.create(
-                model=self.model,
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
                 max_tokens=2000,
-                system=COMPONENT_GENERATION_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": prompt}]
+                system_prompt=COMPONENT_GENERATION_SYSTEM_PROMPT
             )
 
             # Parse the response
-            content = response.content[0].text
+            content = response.content
 
             # Extract JSON from response (handle markdown code blocks)
             if "```json" in content:
@@ -164,14 +162,14 @@ class ComponentGenerationService:
                 },
                 "questions": result.get("questions", []),
                 "context": result.get("aesthetic_context", ""),
-                "tokens_used": response.usage.input_tokens + response.usage.output_tokens,
-                "generation_method": "claude_api"
+                "tokens_used": response.total_tokens,
+                "generation_method": f"{self.provider.name}_api"
             }
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse Claude response as JSON: {e}")
-        except anthropic.APIError as e:
-            raise ValueError(f"Claude API error: {e}")
+            raise ValueError(f"Failed to parse AI response as JSON: {e}")
+        except Exception as e:
+            raise ValueError(f"AI API error: {e}")
 
     def _build_preference_context(
         self,
@@ -487,15 +485,15 @@ Return valid JSON with the same structure as territory mapping."""
         )
 
         try:
-            response = self.client.messages.create(
-                model=self.model,
+            response = self.provider.complete(
+                messages=[AIMessage(role="user", content=prompt)],
+                model_tier=ModelTier.COST_EFFECTIVE,
                 max_tokens=6000,  # More tokens for batch generation
-                system=COMPONENT_GENERATION_SYSTEM_PROMPT,
-                messages=[{"role": "user", "content": prompt}]
+                system_prompt=COMPONENT_GENERATION_SYSTEM_PROMPT
             )
 
             # Parse the response
-            content = response.content[0].text
+            content = response.content
 
             # Extract JSON from response (handle markdown code blocks)
             if "```json" in content:
@@ -523,15 +521,15 @@ Return valid JSON with the same structure as territory mapping."""
                     },
                     "questions": comp.get("questions", []),
                     "context": comp.get("aesthetic_context", ""),
-                    "generation_method": "claude_api_batch"
+                    "generation_method": f"{self.provider.name}_api_batch"
                 })
 
             return formatted
 
         except json.JSONDecodeError as e:
-            raise ValueError(f"Failed to parse Claude batch response as JSON: {e}")
-        except anthropic.APIError as e:
-            raise ValueError(f"Claude API error during batch generation: {e}")
+            raise ValueError(f"Failed to parse AI batch response as JSON: {e}")
+        except Exception as e:
+            raise ValueError(f"AI API error during batch generation: {e}")
 
     def _build_batch_prompt(
         self,
@@ -632,24 +630,8 @@ Generate exactly {batch_size} comparisons. Each must have unique variation IDs.
 Make each comparison test different aesthetic aspects (shape, spacing, typography styling, etc.)."""
 
     def test_api_connection(self) -> Dict:
-        """Test that the Claude API connection works."""
-        try:
-            response = self.client.messages.create(
-                model=self.model,
-                max_tokens=100,
-                messages=[{"role": "user", "content": "Say 'API connection successful' and nothing else."}]
-            )
-            return {
-                "success": True,
-                "message": response.content[0].text,
-                "model": self.model,
-                "tokens_used": response.usage.input_tokens + response.usage.output_tokens
-            }
-        except Exception as e:
-            return {
-                "success": False,
-                "error": str(e)
-            }
+        """Test that the AI API connection works."""
+        return self.provider.test_connection()
 
 
 # Singleton instance
