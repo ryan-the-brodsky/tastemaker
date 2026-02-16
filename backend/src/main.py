@@ -24,9 +24,19 @@ from generator_routes import router as generator_router
 from mockup_routes import router as mockup_router
 from exploration_routes import router as exploration_router
 from interactive_audit_routes import router as interactive_audit_router
+from component_studio_routes import router as studio_router
 
 # Create database tables
 Base.metadata.create_all(bind=engine)
+
+# Add studio_progress column if missing (SQLite doesn't support ALTER from create_all)
+from sqlalchemy import inspect, text
+_inspector = inspect(engine)
+_existing_cols = {c["name"] for c in _inspector.get_columns("extraction_sessions")}
+if "studio_progress" not in _existing_cols:
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE extraction_sessions ADD COLUMN studio_progress TEXT"))
+del _inspector, _existing_cols
 
 # Create FastAPI app
 app = FastAPI(
@@ -55,6 +65,7 @@ app.include_router(generator_router)
 app.include_router(mockup_router)
 app.include_router(exploration_router)
 app.include_router(interactive_audit_router)
+app.include_router(studio_router)
 
 
 # SPA Static Files Handler - serves React build and handles client-side routing

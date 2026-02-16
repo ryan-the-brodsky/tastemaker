@@ -48,6 +48,9 @@ export default function Dashboard() {
 
   const getPhaseLabel = (phase: string) => {
     const labels: Record<string, string> = {
+      color_exploration: 'Color Selection',
+      typography_exploration: 'Typography Selection',
+      component_studio: 'Component Studio',
       territory_mapping: 'Territory Mapping',
       dimension_isolation: 'Dimension Isolation',
       stated_preferences: 'Stated Preferences',
@@ -58,6 +61,9 @@ export default function Dashboard() {
 
   const getPhaseColor = (phase: string) => {
     const colors: Record<string, string> = {
+      color_exploration: 'bg-pink-100 text-pink-800',
+      typography_exploration: 'bg-indigo-100 text-indigo-800',
+      component_studio: 'bg-cyan-100 text-cyan-800',
       territory_mapping: 'bg-blue-100 text-blue-800',
       dimension_isolation: 'bg-yellow-100 text-yellow-800',
       stated_preferences: 'bg-purple-100 text-purple-800',

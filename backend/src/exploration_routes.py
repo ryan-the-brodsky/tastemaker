@@ -304,7 +304,7 @@ def select_typography(
             "style": selection.selected_option.get("id"),
             "category": selection.selected_option.get("category")
         })
-        session.phase = "territory_mapping"
+        session.phase = "component_studio"
         session.comparison_count = 0
 
         db.commit()
@@ -313,8 +313,8 @@ def select_typography(
             success=True,
             exploration_depth=exploration_state["depth"],
             locked_in=True,
-            new_phase="territory_mapping",
-            message=f"Typography '{selection.selected_option.get('name', 'selected')}' locked in! Moving to component exploration."
+            new_phase="component_studio",
+            message=f"Typography '{selection.selected_option.get('name', 'selected')}' locked in! Moving to Component Studio."
         )
 
     if not EXPLORATION_SERVICE_AVAILABLE:

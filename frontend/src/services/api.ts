@@ -8,7 +8,14 @@ import type {
   SkillGenerateResponse,
   QuestionAnswer,
   LockInRequest,
-  LockInResponse
+  LockInResponse,
+  StudioProgress,
+  ComponentDimensions,
+  ComponentState,
+  DimensionChoiceSubmit,
+  CheckpointData,
+  LockComponentResponse,
+  ComponentStyles,
 } from '../types';
 
 const API_BASE = '/api';
@@ -382,6 +389,59 @@ class ApiService {
         }),
       }
     );
+  }
+
+  // Component Studio endpoints
+  async getStudioProgress(sessionId: number): Promise<StudioProgress> {
+    return this.request<StudioProgress>(`/sessions/${sessionId}/studio/progress`);
+  }
+
+  async getComponentDimensions(sessionId: number, componentType: string): Promise<ComponentDimensions> {
+    return this.request<ComponentDimensions>(`/sessions/${sessionId}/studio/component/${componentType}/dimensions`);
+  }
+
+  async getComponentState(sessionId: number, componentType: string): Promise<ComponentState> {
+    return this.request<ComponentState>(`/sessions/${sessionId}/studio/component/${componentType}/state`);
+  }
+
+  async submitDimensionChoice(
+    sessionId: number,
+    componentType: string,
+    choice: DimensionChoiceSubmit
+  ): Promise<{ success: boolean; dimension_index: number; total_dimensions: number }> {
+    return this.request(`/sessions/${sessionId}/studio/component/${componentType}/dimension`, {
+      method: 'POST',
+      body: JSON.stringify(choice),
+    });
+  }
+
+  async lockComponent(sessionId: number): Promise<LockComponentResponse> {
+    return this.request<LockComponentResponse>(`/sessions/${sessionId}/studio/component/lock`, {
+      method: 'POST',
+    });
+  }
+
+  async getCheckpointData(sessionId: number, checkpointId: string): Promise<CheckpointData> {
+    return this.request<CheckpointData>(`/sessions/${sessionId}/studio/checkpoint/${checkpointId}`);
+  }
+
+  async approveCheckpoint(
+    sessionId: number,
+    checkpointId: string
+  ): Promise<{ success: boolean; next_component: string | null; is_studio_complete: boolean }> {
+    return this.request(`/sessions/${sessionId}/studio/checkpoint/${checkpointId}/approve`, {
+      method: 'POST',
+    });
+  }
+
+  async goBackToComponent(sessionId: number, componentType: string): Promise<{ success: boolean }> {
+    return this.request(`/sessions/${sessionId}/studio/component/${componentType}/go-back`, {
+      method: 'POST',
+    });
+  }
+
+  async getPreviewStyles(sessionId: number): Promise<ComponentStyles> {
+    return this.request<ComponentStyles>(`/sessions/${sessionId}/studio/preview-styles`);
   }
 
   // Batch comparison endpoint for faster A/B testing

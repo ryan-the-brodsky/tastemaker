@@ -9,6 +9,7 @@ import RuleReview from './pages/RuleReview';
 import MockupPreview from './pages/MockupPreview';
 import MockupRender from './pages/MockupRender';
 import SkillDownload from './pages/SkillDownload';
+import ComponentStudio from './pages/ComponentStudio';
 import AuditPage from './pages/AuditPage';
 import GeneratorPage from './pages/GeneratorPage';
 import DocsLayout from './pages/docs/DocsLayout';
@@ -95,6 +96,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <ExtractionSession />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/session/:sessionId/studio"
+        element={
+          <ProtectedRoute>
+            <ComponentStudio />
           </ProtectedRoute>
         }
       />

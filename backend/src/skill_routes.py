@@ -71,6 +71,11 @@ def generate_skill(
     except Exception as e:
         print(f"Note: Could not generate mockups: {e}")
 
+    # Extract palette data for palette.json
+    import json as _json
+    chosen_colors = _json.loads(session.chosen_colors) if getattr(session, 'chosen_colors', None) else None
+    chosen_typography = _json.loads(session.chosen_typography) if getattr(session, 'chosen_typography', None) else None
+
     # Generate the package
     username = f"{current_user.first_name}_{current_user.last_name}".lower()
     zip_path = generate_skill_package(
@@ -78,7 +83,9 @@ def generate_skill(
         username=username,
         rules=rules_dicts,
         include_baseline=True,
-        session_id=session_id
+        session_id=session_id,
+        chosen_colors=chosen_colors,
+        chosen_typography=chosen_typography
     )
 
     # Create skill record

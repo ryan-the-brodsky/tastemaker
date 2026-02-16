@@ -46,10 +46,14 @@ class ExtractionSessionModel(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
 
+    # Component Studio progress tracking (JSON)
+    studio_progress = Column(Text, nullable=True)
+
     user = relationship("UserModel", back_populates="sessions")
     comparisons = relationship("ComparisonResultModel", back_populates="session", cascade="all, delete-orphan")
     rules = relationship("StyleRuleModel", back_populates="session", cascade="all, delete-orphan")
     skills = relationship("GeneratedSkillModel", back_populates="session", cascade="all, delete-orphan")
+    studio_choices = relationship("ComponentStudioChoiceModel", back_populates="session", cascade="all, delete-orphan")
 
 
 class ComparisonResultModel(Base):
@@ -108,6 +112,24 @@ class GeneratedSkillModel(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("ExtractionSessionModel", back_populates="skills")
+
+
+class ComponentStudioChoiceModel(Base):
+    """Stores per-component, per-dimension choices from the Component Studio."""
+    __tablename__ = "component_studio_choices"
+
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    component_type = Column(String, nullable=False)      # "button"
+    dimension = Column(String, nullable=False)            # "border_radius"
+    selected_option_id = Column(String, nullable=False)   # "rounded"
+    selected_value = Column(String, nullable=False)       # "8px"
+    fine_tuned_value = Column(String, nullable=True)      # "12px" (if slider-adjusted)
+    css_property = Column(String, nullable=False)         # "borderRadius"
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    session = relationship("ExtractionSessionModel", back_populates="studio_choices")
 
 
 # NEW: Interactive UX audit models for video/replay analysis
@@ -395,6 +417,68 @@ class SkillGenerateResponse(BaseModel):
     skill_id: int
     download_url: str
     preview: dict
+
+
+# Component Studio Schemas
+class DimensionOption(BaseModel):
+    id: str
+    label: str
+    value: str
+
+class FineTuneConfig(BaseModel):
+    min: float
+    max: float
+    step: float
+    unit: str
+
+class DimensionDefinition(BaseModel):
+    key: str
+    label: str
+    css_property: str
+    options: List[DimensionOption]
+    fine_tune: Optional[FineTuneConfig] = None
+    order: int
+
+class ComponentDimensionsResponse(BaseModel):
+    component_type: str
+    component_label: str
+    dimensions: List[DimensionDefinition]
+
+class DimensionChoiceSubmit(BaseModel):
+    dimension: str          # "border_radius"
+    selected_option_id: str # "rounded"
+    selected_value: str     # "8px"
+    css_property: str       # "borderRadius"
+    fine_tuned_value: Optional[str] = None  # "12px" if slider-adjusted
+
+class ComponentStateResponse(BaseModel):
+    component_type: str
+    choices: Dict[str, Dict[str, Any]]  # dimension_key -> {option_id, value, fine_tuned_value, css_property}
+
+class StudioProgressResponse(BaseModel):
+    current_component: Optional[str] = None
+    current_dimension_index: int = 0
+    completed_components: List[str] = []
+    total_components: int = 12
+    checkpoint_approvals: List[str] = []
+    pending_checkpoint: Optional[str] = None
+    is_complete: bool = False
+
+class CheckpointData(BaseModel):
+    checkpoint_id: str
+    label: str
+    description: str
+    mockup_type: str
+    components: List[str]
+    component_styles: Dict[str, Dict[str, str]]  # component_type -> {css_property: value}
+    colors: Optional[Dict] = None
+    typography: Optional[Dict] = None
+
+class LockComponentResponse(BaseModel):
+    success: bool
+    next_component: Optional[str] = None
+    trigger_checkpoint: Optional[str] = None
+    is_studio_complete: bool = False
 
 
 # Update forward refs

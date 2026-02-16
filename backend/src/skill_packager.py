@@ -17,7 +17,9 @@ def generate_skill_package(
     username: str,
     rules: List[dict],
     include_baseline: bool = True,
-    session_id: int = None
+    session_id: int = None,
+    chosen_colors: dict = None,
+    chosen_typography: dict = None
 ) -> str:
     """
     Generate a complete Agent Skills package as a ZIP file.
@@ -54,6 +56,9 @@ def generate_skill_package(
     if session_id:
         _include_mockup_pngs(package_dir, session_id)
 
+    # Generate palette.json if color/typography data available
+    _generate_palette_json(package_dir, session_name, chosen_colors, chosen_typography)
+
     # Create ZIP
     zip_path = os.path.join(temp_dir, f"{package_name}.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
@@ -86,6 +91,45 @@ def _include_mockup_pngs(package_dir: str, session_id: int):
         pass
     except Exception as e:
         print(f"Warning: Could not include mockups: {e}")
+
+
+def _generate_palette_json(package_dir: str, session_name: str, chosen_colors: dict = None, chosen_typography: dict = None):
+    """Generate palette.json with structured color and typography data."""
+    if not chosen_colors:
+        return
+
+    from color_utils import calculate_derived_colors
+
+    colors = chosen_colors.get('colors', {})
+    palette_name = chosen_colors.get('name', 'custom')
+    palette_category = chosen_colors.get('category', 'custom')
+
+    derived = calculate_derived_colors(colors) if all(
+        k in colors for k in ('primary', 'secondary', 'accent', 'background')
+    ) else {}
+
+    palette_data = {
+        "version": "1.0",
+        "generated": datetime.now().isoformat(),
+        "session": session_name,
+        "palette": {
+            "name": palette_name,
+            "category": palette_category,
+            "colors": colors,
+            "derived": derived,
+        },
+    }
+
+    if chosen_typography:
+        palette_data["typography"] = {
+            "heading": chosen_typography.get('heading', ''),
+            "body": chosen_typography.get('body', ''),
+            "style": chosen_typography.get('style', ''),
+            "category": chosen_typography.get('category', ''),
+        }
+
+    with open(os.path.join(package_dir, "palette.json"), "w") as f:
+        json.dump(palette_data, f, indent=2)
 
 
 def _generate_skill_md(package_dir: str, session_name: str, username: str, rules: List[dict]):
@@ -185,6 +229,10 @@ See the `references/` folder for detailed guidelines:
 - `forms.md` - Form layout rules
 - `feedback.md` - Feedback/notification rules
 - `modals.md` - Modal/dialog rules
+- `tables.md` - Table component rules
+- `badges.md` - Badge component rules
+- `tabs.md` - Tabs component rules
+- `toggles.md` - Toggle/switch component rules
 
 ---
 
@@ -277,6 +325,10 @@ def _generate_component_docs(package_dir: str, rules: List[dict]):
         "form": "forms.md",
         "feedback": "feedback.md",
         "modal": "modals.md",
+        "table": "tables.md",
+        "badge": "badges.md",
+        "tabs": "tabs.md",
+        "toggle": "toggles.md",
     }
 
     # Group rules by component - only include rules specific to each component
@@ -648,6 +700,10 @@ def get_skill_preview(rules: List[dict], session_id: int = None) -> dict:
         "references/forms.md",
         "references/feedback.md",
         "references/modals.md",
+        "references/tables.md",
+        "references/badges.md",
+        "references/tabs.md",
+        "references/toggles.md",
         "scripts/audit.py"
     ]
 

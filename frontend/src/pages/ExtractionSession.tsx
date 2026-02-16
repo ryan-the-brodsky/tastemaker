@@ -56,7 +56,9 @@ export default function ExtractionSession() {
   // Redirect based on phase
   useEffect(() => {
     if (currentSession) {
-      if (currentSession.phase === 'stated_preferences' || currentSession.phase === 'complete') {
+      if (currentSession.phase === 'component_studio') {
+        navigate(`/session/${sessionId}/studio`);
+      } else if (currentSession.phase === 'stated_preferences' || currentSession.phase === 'complete') {
         navigate(`/session/${sessionId}/review`);
       }
     }
@@ -104,6 +106,7 @@ export default function ExtractionSession() {
     const labels: Record<string, string> = {
       color_exploration: 'Color Selection',
       typography_exploration: 'Typography Selection',
+      component_studio: 'Component Studio',
       territory_mapping: 'Component Exploration',
       dimension_isolation: 'Fine-Tuning',
     };
@@ -114,6 +117,7 @@ export default function ExtractionSession() {
     const descriptions: Record<string, string> = {
       color_exploration: 'Choose your brand color palette',
       typography_exploration: 'Choose your typography style',
+      component_studio: 'Customize each component type systematically',
       territory_mapping: 'Explore component aesthetics with your chosen colors & fonts',
       dimension_isolation: 'Fine-tuning individual style properties',
     };

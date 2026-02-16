@@ -383,9 +383,9 @@ def submit_comparison_choice(
                 chosen_fonts = comparison["option_a"]["styles"]
 
             session.chosen_typography = json.dumps(chosen_fonts)
-            session.phase = "territory_mapping"
+            session.phase = "component_studio"
             session.comparison_count = 0  # Reset count for new phase
-            next_phase = "territory_mapping"
+            next_phase = "component_studio"
 
     elif session.phase == "territory_mapping":
         if should_transition_to_dimension_isolation(session.comparison_count, results_dicts):
@@ -631,10 +631,10 @@ def lock_in_choice(
 
     elif session.phase == "typography_exploration":
         session.chosen_typography = json.dumps(choice_data.chosen_styles)
-        session.phase = "territory_mapping"
+        session.phase = "component_studio"
         session.comparison_count = 0  # Reset for new phase
-        new_phase = "territory_mapping"
-        message = "Typography locked in! Moving to component exploration."
+        new_phase = "component_studio"
+        message = "Typography locked in! Moving to Component Studio."
 
     session.updated_at = datetime.utcnow()
     db.commit()

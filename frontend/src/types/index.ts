@@ -131,3 +131,81 @@ export interface SkillGenerateResponse {
   download_url: string;
   preview: SkillPreview;
 }
+
+// Component Studio types
+export interface DimensionOption {
+  id: string;
+  label: string;
+  value: string;
+}
+
+export interface FineTuneConfig {
+  min: number;
+  max: number;
+  step: number;
+  unit: string;
+}
+
+export interface DimensionDefinition {
+  key: string;
+  label: string;
+  css_property: string;
+  options: DimensionOption[];
+  fine_tune: FineTuneConfig | null;
+  order: number;
+}
+
+export interface ComponentDimensions {
+  component_type: string;
+  component_label: string;
+  dimensions: DimensionDefinition[];
+}
+
+export interface DimensionChoiceSubmit {
+  dimension: string;
+  selected_option_id: string;
+  selected_value: string;
+  css_property: string;
+  fine_tuned_value?: string;
+}
+
+export interface ComponentState {
+  component_type: string;
+  choices: Record<string, {
+    option_id: string;
+    value: string;
+    original_value: string;
+    fine_tuned_value: string | null;
+    css_property: string;
+  }>;
+}
+
+export interface StudioProgress {
+  current_component: string | null;
+  current_dimension_index: number;
+  completed_components: string[];
+  total_components: number;
+  checkpoint_approvals: string[];
+  pending_checkpoint: string | null;
+  is_complete: boolean;
+}
+
+export interface CheckpointData {
+  checkpoint_id: string;
+  label: string;
+  description: string;
+  mockup_type: string;
+  components: string[];
+  component_styles: Record<string, Record<string, string>>;
+  colors: Record<string, string> | null;
+  typography: Record<string, string> | null;
+}
+
+export interface LockComponentResponse {
+  success: boolean;
+  next_component: string | null;
+  trigger_checkpoint: string | null;
+  is_studio_complete: boolean;
+}
+
+export type ComponentStyles = Record<string, Record<string, string>>;

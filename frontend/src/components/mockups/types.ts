@@ -20,6 +20,7 @@ export interface MockupProps {
   colors: ColorPalette;
   typography: Typography;
   sessionName?: string;
+  componentStyles?: Record<string, Record<string, string>>;
 }
 
 export type MockupType = 'landing' | 'dashboard' | 'form' | 'settings';
