@@ -100,7 +100,12 @@ def _generate_palette_json(package_dir: str, session_name: str, chosen_colors: d
 
     from color_utils import calculate_derived_colors
 
+    # Colors may be nested under 'colors' key or flat on the object
     colors = chosen_colors.get('colors', {})
+    if not colors:
+        # Flat structure: {primary, secondary, accent, accentSoft, background, name, ...}
+        color_keys = ('primary', 'secondary', 'accent', 'accentSoft', 'background')
+        colors = {k: chosen_colors[k] for k in color_keys if k in chosen_colors}
     palette_name = chosen_colors.get('name', 'custom')
     palette_category = chosen_colors.get('category', 'custom')
 
@@ -186,17 +191,34 @@ A/B comparison process. Use these guidelines when making UI/UX decisions.
 ### Key Preferences
 
 """
-    # Group rules by source
+    # Group rules by source and component
     extracted = [r for r in rules if r.get("source") == "extracted"]
     stated = [r for r in rules if r.get("source") == "stated"]
 
     if extracted:
         content += "#### Extracted Preferences (from A/B comparisons)\n\n"
-        for rule in extracted[:10]:  # Top 10
-            confidence = rule.get("confidence", 0)
-            content += f"- **{rule.get('property')}**: {rule.get('message', '')} "
-            content += f"(confidence: {confidence:.0%})\n"
-        content += "\n"
+        # Group by component for readability
+        by_component: Dict[str, List[dict]] = {}
+        for rule in extracted:
+            comp = rule.get("component_type", "general")
+            by_component.setdefault(comp, []).append(rule)
+
+        component_labels = {
+            "button": "Button", "input": "Input", "card": "Card",
+            "typography": "Typography", "navigation": "Navigation",
+            "form": "Form", "modal": "Modal", "feedback": "Feedback",
+            "table": "Table", "badge": "Badge", "tabs": "Tabs",
+            "toggle": "Toggle",
+        }
+
+        for comp, comp_rules in by_component.items():
+            label = component_labels.get(comp, comp.title())
+            content += f"**{label}**\n"
+            for rule in comp_rules:
+                confidence = rule.get("confidence", 0)
+                content += f"- `{rule.get('property')}`: {rule.get('value', '')} "
+                content += f"({confidence:.0%})\n"
+            content += "\n"
 
     if stated:
         content += "#### Stated Preferences (explicit rules)\n\n"
@@ -245,11 +267,16 @@ See the `references/` folder for detailed guidelines:
 def _generate_rules_json(package_dir: str, rules: List[dict], include_baseline: bool):
     """Generate the rules.json file."""
     all_rules = []
+    seen_ids = set()
 
-    # Add user rules
+    # Add user rules (deduplicate by rule ID)
     for rule in rules:
+        rule_id = rule.get("rule_id", "")
+        if rule_id in seen_ids:
+            continue
+        seen_ids.add(rule_id)
         all_rules.append({
-            "id": rule.get("rule_id", ""),
+            "id": rule_id,
             "component": rule.get("component_type"),
             "property": rule.get("property", ""),
             "operator": rule.get("operator", "="),
@@ -370,10 +397,10 @@ def _generate_component_docs(package_dir: str, rules: List[dict]):
         with open(os.path.join(package_dir, "references", filename), "w") as f:
             f.write(content)
 
-    # Generate a global.md file for shared rules
+    # Always generate global.md (referenced in SKILL.md)
+    content = "# Global Style Rules\n\n"
+    content += "These rules apply to all components unless overridden by component-specific rules.\n\n"
     if global_rules:
-        content = "# Global Style Rules\n\n"
-        content += "These rules apply to all components unless overridden by component-specific rules.\n\n"
         content += "## Rules\n\n"
         for rule in global_rules:
             content += f"### {rule.get('rule_id', 'Rule')}\n"
@@ -385,9 +412,12 @@ def _generate_component_docs(package_dir: str, rules: List[dict]):
             if rule.get('message'):
                 content += f"- **Note:** {rule.get('message')}\n"
             content += "\n"
+    else:
+        content += "*No global rules extracted. All rules are component-specific.*\n\n"
+        content += "See `baseline.md` for WCAG and Nielsen baseline rules that apply globally.\n"
 
-        with open(os.path.join(package_dir, "references", "global.md"), "w") as f:
-            f.write(content)
+    with open(os.path.join(package_dir, "references", "global.md"), "w") as f:
+        f.write(content)
 
 
 def _generate_audit_script(package_dir: str):

@@ -53,6 +53,7 @@ export default function MockupCheckpoint({
     colors: mockupColors,
     typography: mockupTypo,
     sessionName,
+    componentStyles: data.component_styles,
   };
 
   const renderMockup = () => {

@@ -40,7 +40,6 @@ export default function ComponentStudio() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const { currentSession, selectSession } = useSession();
   const initialized = useRef(false);
-
   const [progress, setProgress] = useState<StudioProgress | null>(null);
   const [dimensions, setDimensions] = useState<ComponentDimensions | null>(null);
   const [componentState, setComponentState] = useState<ComponentState | null>(null);
@@ -145,6 +144,7 @@ export default function ComponentStudio() {
           },
         };
       });
+
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save choice');
     }
@@ -247,6 +247,22 @@ export default function ComponentStudio() {
       setLoading(false);
     }
   }, [sid, loadProgress, loadComponent]);
+
+  // Compute hasSelection early so it's available for the Enter key effect
+  const _currentDim = dimensions?.dimensions[progress?.current_dimension_index ?? 0];
+  const hasSelectionEarly = !!(_currentDim && componentState?.choices[_currentDim.key]);
+
+  // Enter key to advance
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && hasSelectionEarly && !loading) {
+        e.preventDefault();
+        handleNext();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleNext, hasSelectionEarly, loading]);
 
   // ============================================================================
   // Render
@@ -437,7 +453,7 @@ export default function ComponentStudio() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="bg-white border-t py-3 px-4">
+      <footer className="bg-white border-t py-4 px-4">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <Button
             variant="outline"
@@ -448,21 +464,26 @@ export default function ComponentStudio() {
             &larr; Back
           </Button>
 
-          <div className="text-sm text-gray-500">
-            {currentComponent && (
-              <>
-                {progress?.completed_components.length || 0} of {ALL_COMPONENTS.length} components
-              </>
-            )}
-          </div>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">
+              {currentComponent && (
+                <>
+                  {progress?.completed_components.length || 0} of {ALL_COMPONENTS.length} components
+                </>
+              )}
+            </span>
 
-          <Button
-            size="sm"
-            onClick={handleNext}
-            disabled={!hasSelection || loading}
-          >
-            {isLastDimension ? 'Lock & Continue' : 'Next \u2192'}
-          </Button>
+            <Button
+              onClick={handleNext}
+              disabled={!hasSelection || loading}
+              className="px-8 py-2.5 text-base font-semibold"
+            >
+              {isLastDimension ? 'Lock & Continue \u2192' : 'Next \u2192'}
+              {hasSelection && (
+                <span className="ml-2 text-xs opacity-70 font-normal">Enter &#x23CE;</span>
+              )}
+            </Button>
+          </div>
         </div>
       </footer>
     </div>

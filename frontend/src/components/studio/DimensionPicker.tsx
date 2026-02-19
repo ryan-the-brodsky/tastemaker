@@ -110,7 +110,7 @@ export default function DimensionPicker({
                 <ComponentPreview
                   componentType={componentType}
                   styles={previewStyles}
-                  colors={colors ? { colors } : null}
+                  colors={colors}
                   typography={typography}
                   compact
                 />
