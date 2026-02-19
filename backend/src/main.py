@@ -31,12 +31,15 @@ Base.metadata.create_all(bind=engine)
 
 # Add studio_progress column if missing (SQLite doesn't support ALTER from create_all)
 from sqlalchemy import inspect, text
-_inspector = inspect(engine)
-_existing_cols = {c["name"] for c in _inspector.get_columns("extraction_sessions")}
-if "studio_progress" not in _existing_cols:
-    with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE extraction_sessions ADD COLUMN studio_progress TEXT"))
-del _inspector, _existing_cols
+try:
+    _inspector = inspect(engine)
+    _existing_cols = {c["name"] for c in _inspector.get_columns("extraction_sessions")}
+    if "studio_progress" not in _existing_cols:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE extraction_sessions ADD COLUMN studio_progress TEXT"))
+    del _inspector, _existing_cols
+except Exception:
+    pass  # Column already exists (race condition with multiple workers)
 
 # Create FastAPI app
 app = FastAPI(
