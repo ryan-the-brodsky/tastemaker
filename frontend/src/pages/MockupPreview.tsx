@@ -5,6 +5,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useSession } from '@/contexts/SessionContext';
+import { api } from '@/services/api';
 import { Button } from '@/components/ui/shadcn/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/Card';
 import {
@@ -16,6 +17,7 @@ import {
   Typography,
   MockupType,
 } from '@/components/mockups';
+import type { ComponentStyles } from '@/types';
 
 // Default colors if none extracted
 const DEFAULT_COLORS: ColorPalette = {
@@ -47,6 +49,7 @@ export default function MockupPreview() {
   const [activeTab, setActiveTab] = useState<MockupType>('landing');
   const [colors, setColors] = useState<ColorPalette>(DEFAULT_COLORS);
   const [typography, setTypography] = useState<Typography>(DEFAULT_TYPOGRAPHY);
+  const [componentStyles, setComponentStyles] = useState<ComponentStyles>({});
   const initialized = useRef(false);
 
   useEffect(() => {
@@ -55,6 +58,15 @@ export default function MockupPreview() {
       selectSession(parseInt(sessionId));
     }
   }, [sessionId, selectSession]);
+
+  // Load component styles from studio
+  useEffect(() => {
+    if (sessionId) {
+      api.getPreviewStyles(parseInt(sessionId))
+        .then(styles => setComponentStyles(styles))
+        .catch(() => {}); // Gracefully handle if no studio data exists
+    }
+  }, [sessionId]);
 
   useEffect(() => {
     if (currentSession) {
@@ -87,7 +99,7 @@ export default function MockupPreview() {
   }, [currentSession]);
 
   const renderMockup = () => {
-    const props = { colors, typography, sessionName: currentSession?.name };
+    const props = { colors, typography, sessionName: currentSession?.name, componentStyles };
     switch (activeTab) {
       case 'landing':
         return <LandingMockup {...props} />;

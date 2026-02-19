@@ -42,11 +42,16 @@ export default function RuleReview() {
   useEffect(() => {
     if (sessionId && !initialized.current) {
       initialized.current = true;
-      selectSession(parseInt(sessionId)).then(() => {
-        loadRules();
-      });
+      selectSession(parseInt(sessionId));
     }
   }, [sessionId]);
+
+  // Load rules whenever currentSession becomes available or changes
+  useEffect(() => {
+    if (currentSession) {
+      loadRules();
+    }
+  }, [currentSession?.id]);
 
   // Redirect if session is complete
   useEffect(() => {
