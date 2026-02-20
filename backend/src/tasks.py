@@ -54,7 +54,7 @@ def _get_ai_provider() -> AIProvider:
 # SYNCHRONOUS IMPLEMENTATIONS (for when Celery is not available)
 # ============================================================================
 
-def process_video_audit_sync(recording_id: int, video_path: str, session_id: int) -> Dict[str, Any]:
+def process_video_audit_sync(recording_id: str, video_path: str, session_id: str) -> Dict[str, Any]:
     """
     Synchronous video audit processing.
 
@@ -105,10 +105,9 @@ def process_video_audit_sync(recording_id: int, video_path: str, session_id: int
             db.commit()
             return {"error": str(e)}
 
-        # Process each frame with Claude
-        extracted_values = []
+        # Create all frame records first
+        frame_records_data = []
         for i, frame_data in enumerate(frames):
-            # Create frame record
             frame = InteractionFrameModel(
                 recording_id=recording_id,
                 frame_number=i,
@@ -117,21 +116,26 @@ def process_video_audit_sync(recording_id: int, video_path: str, session_id: int
                 extraction_status="pending"
             )
             db.add(frame)
-            db.commit()
+            frame_records_data.append((frame, frame_data))
+        db.commit()
 
-            # Extract values using AI
-            try:
-                values = _extract_values_from_frame(frame_data['path'], provider)
-                frame.extracted_values = values
+        # Batch extract values using AI (send multiple frames per request)
+        extracted_values = _batch_extract_values(
+            [fd['path'] for _, fd in frame_records_data],
+            provider
+        )
+
+        # Update frame records with extracted values
+        for i, (frame, _) in enumerate(frame_records_data):
+            if i < len(extracted_values) and extracted_values[i]:
+                frame.extracted_values = extracted_values[i]
                 frame.extraction_status = "completed"
-                extracted_values.append(values)
-                logger.info(f"Processed frame {i+1}/{len(frames)}")
-            except Exception as e:
-                logger.warning(f"Frame {i} extraction failed: {e}")
+            else:
                 frame.extraction_status = "failed"
-                extracted_values.append({})
-
-            db.commit()
+                if i >= len(extracted_values):
+                    extracted_values.append({})
+            logger.info(f"Processed frame {i+1}/{len(frames)}")
+        db.commit()
 
         # Calculate temporal metrics
         metrics = []
@@ -192,10 +196,10 @@ def process_video_audit_sync(recording_id: int, video_path: str, session_id: int
 
 
 def process_playwright_audit_sync(
-    recording_id: int,
+    recording_id: str,
     target_url: str,
     actions: List[Dict],
-    session_id: int
+    session_id: str
 ) -> Dict[str, Any]:
     """
     Synchronous Playwright audit processing.
@@ -258,6 +262,101 @@ def process_playwright_audit_sync(
         db.close()
 
 
+def _batch_extract_values(
+    frame_paths: List[str],
+    provider: AIProvider = None,
+    batch_size: int = 5
+) -> List[Dict[str, Any]]:
+    """
+    Extract values from multiple frames using batched AI Vision calls.
+
+    Sends multiple frames in a single API request where possible,
+    reducing the number of API calls from N to ceil(N/batch_size).
+
+    Args:
+        frame_paths: List of paths to frame images
+        provider: AI provider for vision calls
+        batch_size: Number of frames to include per API call
+
+    Returns:
+        List of extracted value dicts, one per frame
+    """
+    if provider is None:
+        provider = _get_ai_provider()
+
+    all_values = []
+
+    for batch_start in range(0, len(frame_paths), batch_size):
+        batch_paths = frame_paths[batch_start:batch_start + batch_size]
+
+        try:
+            images = []
+            for path in batch_paths:
+                try:
+                    images.append(ImageContent.from_file(path))
+                except Exception as e:
+                    logger.warning(f"Failed to load frame {path}: {e}")
+                    images.append(None)
+
+            # Filter out failed loads
+            valid_images = [img for img in images if img is not None]
+            valid_indices = [i for i, img in enumerate(images) if img is not None]
+
+            if not valid_images:
+                all_values.extend([{}] * len(batch_paths))
+                continue
+
+            prompt = (
+                f"Analyze these {len(valid_images)} UI screenshot frames from a user interaction recording. "
+                f"For EACH frame (numbered 1 through {len(valid_images)}), extract the following values as a JSON array. "
+                f"Each element in the array corresponds to one frame.\n\n"
+                f"{get_extraction_prompt('full')}\n\n"
+                f"Return a JSON array with {len(valid_images)} objects, one per frame."
+            )
+
+            response = provider.complete_with_vision(
+                text_prompt=prompt,
+                images=valid_images,
+                model_tier=ModelTier.CAPABLE,
+                max_tokens=4096 * min(len(valid_images), 3)
+            )
+
+            response_text = response.content
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0]
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0]
+
+            parsed = json.loads(response_text.strip())
+
+            # Handle both single-frame (dict) and multi-frame (list) responses
+            if isinstance(parsed, dict):
+                parsed = [parsed]
+
+            # Map results back to original positions
+            batch_values = [{}] * len(batch_paths)
+            for j, valid_idx in enumerate(valid_indices):
+                if j < len(parsed):
+                    batch_values[valid_idx] = parsed[j]
+
+            all_values.extend(batch_values)
+
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse batch AI response as JSON: {e}")
+            all_values.extend([{}] * len(batch_paths))
+        except Exception as e:
+            logger.error(f"Batch AI extraction failed: {e}")
+            # Fall back to individual extraction for this batch
+            for path in batch_paths:
+                try:
+                    values = _extract_values_from_frame(path, provider)
+                    all_values.append(values)
+                except Exception:
+                    all_values.append({})
+
+    return all_values
+
+
 def _extract_values_from_frame(frame_path: str, provider: AIProvider = None) -> Dict[str, Any]:
     """
     Extract values from a frame using AI Vision.
@@ -311,7 +410,7 @@ if is_celery_available():
     from celery.exceptions import SoftTimeLimitExceeded
 
     @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
-    def process_video_audit_task(self, recording_id: int, video_path: str, session_id: int):
+    def process_video_audit_task(self, recording_id: str, video_path: str, session_id: str):
         """
         Celery task to process a video for UX audit.
 
@@ -345,10 +444,10 @@ if is_celery_available():
     @celery_app.task(bind=True, max_retries=3, default_retry_delay=60)
     def process_playwright_audit_task(
         self,
-        recording_id: int,
+        recording_id: str,
         target_url: str,
         actions: List[Dict],
-        session_id: int
+        session_id: str
     ):
         """
         Celery task to process a Playwright replay audit.

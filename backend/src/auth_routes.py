@@ -128,6 +128,7 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            subscription_tier=getattr(user, 'subscription_tier', 'free'),
         )
     )
 
@@ -153,6 +154,7 @@ def login(user_data: UserLogin, db: Session = Depends(get_db)):
             email=user.email,
             first_name=user.first_name,
             last_name=user.last_name,
+            subscription_tier=getattr(user, 'subscription_tier', 'free'),
         )
     )
 
@@ -165,4 +167,5 @@ def get_me(current_user: UserModel = Depends(get_current_user)):
         email=current_user.email,
         first_name=current_user.first_name,
         last_name=current_user.last_name,
+        subscription_tier=getattr(current_user, 'subscription_tier', 'free'),
     )

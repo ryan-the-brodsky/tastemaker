@@ -8,6 +8,7 @@
  */
 import { useState, useRef, useEffect } from 'react';
 import { useSession } from '@/contexts/SessionContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/shadcn/Button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/shadcn/Card';
 import { api, VideoAuditRecording, InteractiveAuditResult, InteractiveAuditViolation } from '@/services/api';
@@ -31,9 +32,11 @@ interface AuditResult {
 
 export default function AuditPage() {
   const { sessions, loadSessions } = useSession();
+  const { user } = useAuth();
+  const isPremium = user?.subscription_tier === 'premium';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
-  const [selectedSession, setSelectedSession] = useState<number | null>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -92,7 +95,7 @@ export default function AuditPage() {
     }
   };
 
-  const pollVideoStatus = async (recordingId: number) => {
+  const pollVideoStatus = async (recordingId: string) => {
     const maxAttempts = 60; // Poll for up to 5 minutes
     let attempts = 0;
 
@@ -224,7 +227,7 @@ export default function AuditPage() {
                 <select
                   className="w-full px-3 py-2 border rounded-lg"
                   value={selectedSession || ''}
-                  onChange={(e) => setSelectedSession(Number(e.target.value) || null)}
+                  onChange={(e) => setSelectedSession(e.target.value || null)}
                   agent-handle="audit-select-session"
                 >
                   <option value="">Select a session...</option>
@@ -274,11 +277,11 @@ export default function AuditPage() {
                       auditMode === 'video'
                         ? 'border-purple-500 bg-purple-50 text-purple-700'
                         : 'border-gray-200 hover:border-gray-300'
-                    }`}
+                    } ${!isPremium ? 'opacity-60' : ''}`}
                     onClick={() => setAuditMode('video')}
                     agent-handle="audit-mode-video"
                   >
-                    Video
+                    Video {!isPremium && <span className="text-xs ml-1">(Premium)</span>}
                   </button>
                 </div>
                 {auditMode === 'video' && (
@@ -361,7 +364,30 @@ export default function AuditPage() {
               </Card>
             )}
 
-            {auditMode === 'video' && (
+            {auditMode === 'video' && !isPremium && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Premium Feature</CardTitle>
+                  <CardDescription>
+                    Interactive video auditing is available for Premium subscribers
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-center py-6">
+                    <div className="text-4xl mb-3">&#x1f512;</div>
+                    <p className="text-gray-600 mb-4">
+                      Video audits analyze interactive UX patterns like response timing,
+                      touch target sizes, and dark patterns using AI vision analysis.
+                    </p>
+                    <div className="px-4 py-3 bg-purple-50 border border-purple-200 rounded-lg text-purple-700 text-sm">
+                      Premium subscriptions are coming soon. Stay tuned!
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {auditMode === 'video' && isPremium && (
               <Card>
                 <CardHeader>
                   <CardTitle>3. Upload Video</CardTitle>
@@ -434,7 +460,7 @@ export default function AuditPage() {
                 !selectedSession ||
                 (auditMode === 'screenshot' && !selectedFile) ||
                 (auditMode === 'url' && !urlToAudit) ||
-                (auditMode === 'video' && !selectedVideo)
+                (auditMode === 'video' && (!selectedVideo || !isPremium))
               }
               agent-handle="audit-button-submit"
             >

@@ -56,6 +56,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 email: 'local@tastemaker.local',
                 first_name: 'Local',
                 last_name: 'User',
+                subscription_tier: 'free',
               });
             }
             setLoading(false);

@@ -19,6 +19,8 @@ class UserModel(Base):
     password_hash = Column(String, nullable=False)
     first_name = Column(String)
     last_name = Column(String)
+    subscription_tier = Column(String, default="free", nullable=False, server_default="free")
+    subscription_updated_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     sessions = relationship("ExtractionSessionModel", back_populates="user", cascade="all, delete-orphan")
@@ -27,7 +29,7 @@ class UserModel(Base):
 class ExtractionSessionModel(Base):
     __tablename__ = "extraction_sessions"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, nullable=False)
     phase = Column(String, default="color_exploration")  # Start with color selection
@@ -59,8 +61,8 @@ class ExtractionSessionModel(Base):
 class ComparisonResultModel(Base):
     __tablename__ = "comparison_results"
 
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
     comparison_id = Column(Integer, nullable=False)
     component_type = Column(String, nullable=False)
     phase = Column(String, nullable=False)
@@ -79,8 +81,8 @@ class ComparisonResultModel(Base):
 class StyleRuleModel(Base):
     __tablename__ = "style_rules"
 
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
     rule_id = Column(String, nullable=False)
     component_type = Column(String, nullable=True)
     property = Column(String, nullable=False)
@@ -105,8 +107,8 @@ class StyleRuleModel(Base):
 class GeneratedSkillModel(Base):
     __tablename__ = "generated_skills"
 
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
     skill_name = Column(String, nullable=False)
     file_path = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -118,8 +120,8 @@ class ComponentStudioChoiceModel(Base):
     """Stores per-component, per-dimension choices from the Component Studio."""
     __tablename__ = "component_studio_choices"
 
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
     component_type = Column(String, nullable=False)      # "button"
     dimension = Column(String, nullable=False)            # "border_radius"
     selected_option_id = Column(String, nullable=False)   # "rounded"
@@ -138,8 +140,8 @@ class InteractionRecordingModel(Base):
     """Stores metadata about uploaded videos or Playwright replays for UX auditing."""
     __tablename__ = "interaction_recordings"
 
-    id = Column(Integer, primary_key=True)
-    session_id = Column(Integer, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    session_id = Column(String, ForeignKey("extraction_sessions.id", ondelete="CASCADE"), nullable=False)
     source_type = Column(String, nullable=False)  # "video" | "playwright"
     source_path = Column(String, nullable=True)  # Path to uploaded video file
     duration_ms = Column(Integer, nullable=True)  # Total duration in milliseconds
@@ -158,8 +160,8 @@ class InteractionFrameModel(Base):
     """Stores individual frames extracted from recordings with Claude-extracted values."""
     __tablename__ = "interaction_frames"
 
-    id = Column(Integer, primary_key=True)
-    recording_id = Column(Integer, ForeignKey("interaction_recordings.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    recording_id = Column(String, ForeignKey("interaction_recordings.id", ondelete="CASCADE"), nullable=False)
     frame_number = Column(Integer, nullable=False)  # Sequential frame number
     timestamp_ms = Column(Integer, nullable=False)  # Timestamp in the recording
     frame_path = Column(String, nullable=False)  # Path to extracted frame image
@@ -174,11 +176,11 @@ class TemporalMetricModel(Base):
     """Stores calculated temporal metrics between frames for Doherty threshold etc."""
     __tablename__ = "temporal_metrics"
 
-    id = Column(Integer, primary_key=True)
-    recording_id = Column(Integer, ForeignKey("interaction_recordings.id", ondelete="CASCADE"), nullable=False)
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    recording_id = Column(String, ForeignKey("interaction_recordings.id", ondelete="CASCADE"), nullable=False)
     metric_type = Column(String, nullable=False)  # response_time, animation_duration, state_transition
-    start_frame_id = Column(Integer, ForeignKey("interaction_frames.id"), nullable=False)
-    end_frame_id = Column(Integer, ForeignKey("interaction_frames.id"), nullable=False)
+    start_frame_id = Column(String, ForeignKey("interaction_frames.id"), nullable=False)
+    end_frame_id = Column(String, ForeignKey("interaction_frames.id"), nullable=False)
     duration_ms = Column(Integer, nullable=False)  # Measured duration
     details = Column(JSON, nullable=True)  # Additional context (what changed, etc.)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -208,6 +210,7 @@ class UserResponse(BaseModel):
     email: str
     first_name: str
     last_name: str
+    subscription_tier: str = "free"
 
     class Config:
         from_attributes = True
@@ -226,7 +229,7 @@ class SessionCreate(BaseModel):
 
 
 class SessionResponse(BaseModel):
-    id: int
+    id: str
     name: str
     phase: str
     brand_colors: Optional[str] = None
@@ -295,7 +298,7 @@ class ComparisonChoice(BaseModel):
 
 
 class ComparisonResultResponse(BaseModel):
-    id: int
+    id: str
     comparison_id: int
     component_type: str
     phase: str
@@ -329,7 +332,7 @@ class RuleUpdate(BaseModel):
 
 
 class StyleRuleResponse(BaseModel):
-    id: int
+    id: str
     rule_id: str
     component_type: Optional[str] = None
     property: str
@@ -354,8 +357,8 @@ class StyleRuleResponse(BaseModel):
 
 # Interactive Audit Schemas
 class InteractionRecordingResponse(BaseModel):
-    id: int
-    session_id: int
+    id: str
+    session_id: str
     source_type: str
     duration_ms: Optional[int] = None
     frame_count: int
@@ -369,8 +372,8 @@ class InteractionRecordingResponse(BaseModel):
 
 
 class InteractionFrameResponse(BaseModel):
-    id: int
-    recording_id: int
+    id: str
+    recording_id: str
     frame_number: int
     timestamp_ms: int
     extracted_values: Optional[Dict] = None
@@ -381,11 +384,11 @@ class InteractionFrameResponse(BaseModel):
 
 
 class TemporalMetricResponse(BaseModel):
-    id: int
-    recording_id: int
+    id: str
+    recording_id: str
     metric_type: str
-    start_frame_id: int
-    end_frame_id: int
+    start_frame_id: str
+    end_frame_id: str
     duration_ms: int
     details: Optional[Dict] = None
 
@@ -394,16 +397,16 @@ class TemporalMetricResponse(BaseModel):
 
 
 class VideoAuditRequest(BaseModel):
-    session_id: int
+    session_id: str
 
 
 class ReplayAuditRequest(BaseModel):
-    session_id: int
+    session_id: str
     playwright_script: str  # JSON script or URL to replay
 
 
 class InteractiveAuditResult(BaseModel):
-    recording_id: int
+    recording_id: str
     total_frames: int
     temporal_violations: List[Dict]
     spatial_violations: List[Dict]
@@ -414,7 +417,7 @@ class InteractiveAuditResult(BaseModel):
 
 # Skill Schemas
 class SkillGenerateResponse(BaseModel):
-    skill_id: int
+    skill_id: str
     download_url: str
     preview: dict
 

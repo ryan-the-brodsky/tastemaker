@@ -61,6 +61,22 @@ class ApiService {
     });
 
     if (!response.ok) {
+      // Handle 401 Unauthorized - clear token and redirect to login
+      if (response.status === 401) {
+        this.setToken(null);
+        window.location.href = '/login';
+        throw new Error('Session expired. Please log in again.');
+      }
+
+      // Handle 403 Premium gating
+      if (response.status === 403) {
+        const errorBody = await response.json().catch(() => ({ detail: 'Access denied' }));
+        if (typeof errorBody.detail === 'string' && errorBody.detail.includes('Premium subscription required')) {
+          throw new Error('This feature requires a Premium subscription. Upgrade to access interactive video audits.');
+        }
+        throw new Error(typeof errorBody.detail === 'string' ? errorBody.detail : 'Access denied');
+      }
+
       const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
       // Handle FastAPI validation errors (422) where detail is an array
       let errorMessage = 'Request failed';
@@ -134,24 +150,24 @@ class ApiService {
     return this.request<Session[]>('/sessions');
   }
 
-  async getSession(sessionId: number): Promise<Session> {
+  async getSession(sessionId: string): Promise<Session> {
     return this.request<Session>(`/sessions/${sessionId}`);
   }
 
-  async deleteSession(sessionId: number): Promise<void> {
+  async deleteSession(sessionId: string): Promise<void> {
     return this.request<void>(`/sessions/${sessionId}`, {
       method: 'DELETE',
     });
   }
 
   // Comparison endpoints
-  async getComparison(sessionId: number): Promise<Comparison> {
+  async getComparison(sessionId: string): Promise<Comparison> {
     return this.request<Comparison>(`/sessions/${sessionId}/comparison`);
   }
 
   async submitChoice(
-    sessionId: number,
-    comparisonId: number,
+    sessionId: string,
+    comparisonId: number,  // sequential counter, not UUID
     choice: 'a' | 'b' | 'none',
     decisionTimeMs: number,
     answers?: QuestionAnswer[]
@@ -171,7 +187,7 @@ class ApiService {
 
   // Lock-in endpoint for "That's it!" button in color/typography phases
   async lockInChoice(
-    sessionId: number,
+    sessionId: string,
     data: LockInRequest
   ): Promise<LockInResponse> {
     return this.request<LockInResponse>(
@@ -184,12 +200,12 @@ class ApiService {
   }
 
   // Rule endpoints
-  async getRules(sessionId: number): Promise<StyleRule[]> {
+  async getRules(sessionId: string): Promise<StyleRule[]> {
     return this.request<StyleRule[]>(`/sessions/${sessionId}/rules`);
   }
 
   async addRule(
-    sessionId: number,
+    sessionId: string,
     statement: string,
     component?: string
   ): Promise<StyleRule> {
@@ -200,7 +216,7 @@ class ApiService {
   }
 
   async updateRule(
-    sessionId: number,
+    sessionId: string,
     ruleId: string,
     updates: { value?: unknown; severity?: string; message?: string }
   ): Promise<StyleRule> {
@@ -210,21 +226,21 @@ class ApiService {
     });
   }
 
-  async deleteRule(sessionId: number, ruleId: string): Promise<void> {
+  async deleteRule(sessionId: string, ruleId: string): Promise<void> {
     return this.request<void>(`/sessions/${sessionId}/rules/${ruleId}`, {
       method: 'DELETE',
     });
   }
 
   // Skill endpoints
-  async generateSkill(sessionId: number): Promise<SkillGenerateResponse> {
+  async generateSkill(sessionId: string): Promise<SkillGenerateResponse> {
     return this.request<SkillGenerateResponse>(
       `/sessions/${sessionId}/generate-skill`,
       { method: 'POST' }
     );
   }
 
-  getSkillDownloadUrl(skillId: number): string {
+  getSkillDownloadUrl(skillId: string): string {
     return `${API_BASE}/skills/${skillId}/download`;
   }
 
@@ -257,7 +273,7 @@ class ApiService {
     return response.json();
   }
 
-  async auditUrl(url: string, sessionId: number): Promise<{
+  async auditUrl(url: string, sessionId: string): Promise<{
     violations: Array<{
       rule_id: string;
       severity: 'error' | 'warning' | 'info';
@@ -293,17 +309,17 @@ class ApiService {
     return response.json();
   }
 
-  async getVideoRecordingStatus(recordingId: number): Promise<VideoAuditRecording> {
+  async getVideoRecordingStatus(recordingId: string): Promise<VideoAuditRecording> {
     return this.request<VideoAuditRecording>(`/audit/interactive/recording/${recordingId}`);
   }
 
-  async getVideoAuditResults(recordingId: number): Promise<InteractiveAuditResult> {
+  async getVideoAuditResults(recordingId: string): Promise<InteractiveAuditResult> {
     return this.request<InteractiveAuditResult>(`/audit/interactive/recording/${recordingId}/results`);
   }
 
   // Generator endpoints
   async generateComponent(data: {
-    session_id: number;
+    session_id: string;
     component_type: string;
     variant: string;
     output_format: string;
@@ -316,7 +332,7 @@ class ApiService {
   }
 
   // Component library export
-  async exportComponentLibrary(sessionId: number, format: string = 'react'): Promise<Blob> {
+  async exportComponentLibrary(sessionId: string, format: string = 'react'): Promise<Blob> {
     const token = this.getToken();
     const formData = new FormData();
     formData.append('session_id', sessionId.toString());
@@ -337,7 +353,7 @@ class ApiService {
   }
 
   // Mockup generation
-  async generateMockupPngs(sessionId: number): Promise<{ mockups: string[] }> {
+  async generateMockupPngs(sessionId: string): Promise<{ mockups: string[] }> {
     return this.request<{ mockups: string[] }>(
       `/sessions/${sessionId}/generate-mockup-pngs`,
       { method: 'POST' }
@@ -345,12 +361,12 @@ class ApiService {
   }
 
   // Exploration endpoints (trie-style color/typography discovery)
-  async getPaletteOptions(sessionId: number, signal?: AbortSignal): Promise<ExplorationResponse> {
+  async getPaletteOptions(sessionId: string, signal?: AbortSignal): Promise<ExplorationResponse> {
     return this.request<ExplorationResponse>(`/sessions/${sessionId}/explore/palettes`, {}, signal);
   }
 
   async selectPalette(
-    sessionId: number,
+    sessionId: string,
     selectedOptionId: string,
     selectedOption: Record<string, unknown>,
     wantsRefinement: boolean = true
@@ -368,12 +384,12 @@ class ApiService {
     );
   }
 
-  async getTypographyOptions(sessionId: number, signal?: AbortSignal): Promise<ExplorationResponse> {
+  async getTypographyOptions(sessionId: string, signal?: AbortSignal): Promise<ExplorationResponse> {
     return this.request<ExplorationResponse>(`/sessions/${sessionId}/explore/typography`, {}, signal);
   }
 
   async selectTypography(
-    sessionId: number,
+    sessionId: string,
     selectedOptionId: string,
     selectedOption: Record<string, unknown>,
     wantsRefinement: boolean = true
@@ -392,20 +408,20 @@ class ApiService {
   }
 
   // Component Studio endpoints
-  async getStudioProgress(sessionId: number): Promise<StudioProgress> {
+  async getStudioProgress(sessionId: string): Promise<StudioProgress> {
     return this.request<StudioProgress>(`/sessions/${sessionId}/studio/progress`);
   }
 
-  async getComponentDimensions(sessionId: number, componentType: string): Promise<ComponentDimensions> {
+  async getComponentDimensions(sessionId: string, componentType: string): Promise<ComponentDimensions> {
     return this.request<ComponentDimensions>(`/sessions/${sessionId}/studio/component/${componentType}/dimensions`);
   }
 
-  async getComponentState(sessionId: number, componentType: string): Promise<ComponentState> {
+  async getComponentState(sessionId: string, componentType: string): Promise<ComponentState> {
     return this.request<ComponentState>(`/sessions/${sessionId}/studio/component/${componentType}/state`);
   }
 
   async submitDimensionChoice(
-    sessionId: number,
+    sessionId: string,
     componentType: string,
     choice: DimensionChoiceSubmit
   ): Promise<{ success: boolean; dimension_index: number; total_dimensions: number }> {
@@ -415,18 +431,18 @@ class ApiService {
     });
   }
 
-  async lockComponent(sessionId: number): Promise<LockComponentResponse> {
+  async lockComponent(sessionId: string): Promise<LockComponentResponse> {
     return this.request<LockComponentResponse>(`/sessions/${sessionId}/studio/component/lock`, {
       method: 'POST',
     });
   }
 
-  async getCheckpointData(sessionId: number, checkpointId: string): Promise<CheckpointData> {
+  async getCheckpointData(sessionId: string, checkpointId: string): Promise<CheckpointData> {
     return this.request<CheckpointData>(`/sessions/${sessionId}/studio/checkpoint/${checkpointId}`);
   }
 
   async approveCheckpoint(
-    sessionId: number,
+    sessionId: string,
     checkpointId: string
   ): Promise<{ success: boolean; next_component: string | null; is_studio_complete: boolean }> {
     return this.request(`/sessions/${sessionId}/studio/checkpoint/${checkpointId}/approve`, {
@@ -434,19 +450,19 @@ class ApiService {
     });
   }
 
-  async goBackToComponent(sessionId: number, componentType: string): Promise<{ success: boolean }> {
+  async goBackToComponent(sessionId: string, componentType: string): Promise<{ success: boolean }> {
     return this.request(`/sessions/${sessionId}/studio/component/${componentType}/go-back`, {
       method: 'POST',
     });
   }
 
-  async getPreviewStyles(sessionId: number): Promise<ComponentStyles> {
+  async getPreviewStyles(sessionId: string): Promise<ComponentStyles> {
     return this.request<ComponentStyles>(`/sessions/${sessionId}/studio/preview-styles`);
   }
 
   // Batch comparison endpoint for faster A/B testing
   async getBatchComparisons(
-    sessionId: number,
+    sessionId: string,
     batchSize: number = 5,
     recentChoices?: Array<{ component_type: string; choice: string }>
   ): Promise<BatchComparisonResponse> {
@@ -508,8 +524,8 @@ export interface BatchComparisonResponse {
 
 // Interactive Video Audit types
 export interface VideoAuditRecording {
-  id: number;
-  session_id: number;
+  id: string;
+  session_id: string;
   source_type: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
   error_message?: string;
@@ -526,7 +542,7 @@ export interface InteractiveAuditViolation {
 }
 
 export interface InteractiveAuditResult {
-  recording_id: number;
+  recording_id: string;
   total_frames: number;
   duration_ms?: number;
   temporal_violations: InteractiveAuditViolation[];

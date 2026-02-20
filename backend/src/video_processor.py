@@ -41,9 +41,9 @@ class VideoProcessor:
     SUPPORTED_FORMATS = {'.mp4', '.webm', '.mov', '.avi', '.mkv'}
 
     # Default extraction settings
-    DEFAULT_FPS = 2  # Frames per second for regular extraction
     SCENE_THRESHOLD = 0.3  # Scene change detection threshold (0-1)
-    MAX_FRAMES = 500  # Maximum frames to extract per video
+    MAX_KEYFRAMES = 10  # Maximum representative keyframes to extract
+    MIN_KEYFRAMES = 3  # Minimum keyframes (fallback to even sampling)
 
     def __init__(self, output_dir: Optional[str] = None):
         """
@@ -153,84 +153,101 @@ class VideoProcessor:
     def extract_keyframes(
         self,
         video_path: str,
-        recording_id: int,
+        recording_id: str,
         fps: Optional[float] = None,
         include_scene_changes: bool = True
     ) -> List[Dict[str, Any]]:
         """
-        Extract keyframes from video using FFmpeg.
+        Extract representative keyframes from video using FFmpeg scene detection.
 
-        Extracts frames at regular intervals and optionally on scene changes.
+        Uses scene change detection to extract only frames where significant
+        visual changes occur, rather than fixed-rate sampling. This dramatically
+        reduces the number of frames (and thus API calls) from hundreds to ~10.
+
+        Falls back to evenly-spaced sampling if scene detection yields too few frames.
 
         Args:
             video_path: Path to video file
             recording_id: ID for organizing output
-            fps: Frames per second for extraction (default: 2)
-            include_scene_changes: Whether to also extract on scene changes
+            fps: Ignored (kept for API compatibility)
+            include_scene_changes: Ignored (always uses scene detection)
 
         Returns:
             List of frame metadata dicts with path and timestamp
         """
-        fps = fps or self.DEFAULT_FPS
-
         # Create output directory for this recording
         frames_dir = Path(self.output_dir) / f"recording_{recording_id}"
         frames_dir.mkdir(parents=True, exist_ok=True)
 
         frames = []
+        metadata = self.validate_video(video_path)
+        duration_ms = metadata['duration_ms']
 
-        # 1. Extract frames at regular intervals
-        regular_dir = frames_dir / "regular"
-        regular_dir.mkdir(exist_ok=True)
+        # 1. Try scene-change detection for representative keyframes
+        scene_dir = frames_dir / "scenes"
+        scene_dir.mkdir(exist_ok=True)
 
         try:
             subprocess.run([
                 'ffmpeg',
                 '-i', video_path,
-                '-vf', f'fps={fps}',
+                '-vf', f"select='gt(scene,{self.SCENE_THRESHOLD})'",
+                '-vsync', 'vfr',
                 '-frame_pts', '1',
-                str(regular_dir / 'frame_%04d.png')
+                str(scene_dir / 'scene_%04d.png')
             ], capture_output=True, check=True)
 
-            # Get timestamps for regular frames
-            frames.extend(self._collect_frame_metadata(regular_dir, video_path, "regular"))
+            frames = self._collect_frame_metadata(scene_dir, video_path, "scene")
+        except subprocess.CalledProcessError:
+            # Scene detection failed, will use fallback below
+            pass
 
-        except subprocess.CalledProcessError as e:
-            raise VideoProcessorError(f"FFmpeg frame extraction failed: {e.stderr}")
+        # 2. Fallback: if scene detection yielded too few frames, sample evenly
+        if len(frames) < self.MIN_KEYFRAMES:
+            fallback_dir = frames_dir / "fallback"
+            fallback_dir.mkdir(exist_ok=True)
 
-        # 2. Extract on scene changes
-        if include_scene_changes:
-            scene_dir = frames_dir / "scenes"
-            scene_dir.mkdir(exist_ok=True)
+            # Sample start, end, and evenly-spaced frames in between
+            num_samples = max(self.MIN_KEYFRAMES, 5)
+            duration_sec = duration_ms / 1000
 
-            try:
-                subprocess.run([
-                    'ffmpeg',
-                    '-i', video_path,
-                    '-vf', f"select='gt(scene,{self.SCENE_THRESHOLD})'",
-                    '-vsync', 'vfr',
-                    '-frame_pts', '1',
-                    str(scene_dir / 'scene_%04d.png')
-                ], capture_output=True, check=True)
+            for i in range(num_samples):
+                timestamp_sec = (i / (num_samples - 1)) * duration_sec if num_samples > 1 else 0
+                output_path = str(fallback_dir / f'sample_{i:04d}.png')
 
-                # Get timestamps for scene change frames
-                scene_frames = self._collect_frame_metadata(scene_dir, video_path, "scene")
+                try:
+                    subprocess.run([
+                        'ffmpeg',
+                        '-ss', str(timestamp_sec),
+                        '-i', video_path,
+                        '-frames:v', '1',
+                        '-y',
+                        output_path
+                    ], capture_output=True, check=True)
 
-                # Merge, removing duplicates (within 100ms)
-                frames = self._merge_frame_lists(frames, scene_frames)
-
-            except subprocess.CalledProcessError:
-                # Scene detection might fail for some videos, continue with regular frames
-                pass
+                    frames.append({
+                        'path': output_path,
+                        'timestamp_ms': int(timestamp_sec * 1000),
+                        'frame_type': 'sampled',
+                    })
+                except subprocess.CalledProcessError:
+                    continue
 
         # Sort by timestamp
         frames.sort(key=lambda f: f['timestamp_ms'])
 
-        # Limit total frames
-        if len(frames) > self.MAX_FRAMES:
-            # Keep first and last frames, sample evenly from middle
-            step = len(frames) // self.MAX_FRAMES
-            frames = [frames[i] for i in range(0, len(frames), step)][:self.MAX_FRAMES]
+        # Cap at MAX_KEYFRAMES
+        if len(frames) > self.MAX_KEYFRAMES:
+            # Keep first and last, sample evenly from the rest
+            if len(frames) <= 2:
+                pass
+            else:
+                first = frames[0]
+                last = frames[-1]
+                middle = frames[1:-1]
+                step = max(1, len(middle) // (self.MAX_KEYFRAMES - 2))
+                sampled_middle = [middle[i] for i in range(0, len(middle), step)][:self.MAX_KEYFRAMES - 2]
+                frames = [first] + sampled_middle + [last]
 
         # Assign sequential frame numbers
         for i, frame in enumerate(frames):
@@ -493,7 +510,7 @@ class VideoProcessor:
 
 def process_video_for_audit(
     video_path: str,
-    recording_id: int,
+    recording_id: str,
     output_dir: Optional[str] = None
 ) -> Tuple[List[Dict], Dict]:
     """

@@ -33,6 +33,7 @@ from models import (
     InteractiveAuditResult,
 )
 from auth_routes import get_current_user
+from premium import require_premium
 from video_processor import check_ffmpeg_installed
 from interactive_baseline_rules import (
     INTERACTIVE_BASELINE_RULES,
@@ -68,7 +69,9 @@ ALLOWED_VIDEO_TYPES = {
 
 
 @router.get("/check-ffmpeg")
-async def check_ffmpeg():
+async def check_ffmpeg(
+    current_user: UserModel = Depends(require_premium),
+):
     """Check if FFmpeg is installed for video processing."""
     available = check_ffmpeg_installed()
     return {
@@ -79,10 +82,10 @@ async def check_ffmpeg():
 
 @router.post("/video", response_model=InteractionRecordingResponse)
 async def audit_video(
-    session_id: int = Form(...),
+    session_id: str = Form(...),
     video: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_premium)
 ):
     """
     Start a video-based UX audit.
@@ -173,11 +176,11 @@ async def audit_video(
 
 @router.post("/replay")
 async def audit_replay(
-    session_id: int = Form(...),
+    session_id: str = Form(...),
     target_url: str = Form(...),
     actions: str = Form(default="[]"),  # JSON array of actions
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_premium)
 ):
     """
     Start a Playwright replay-based UX audit.
@@ -250,9 +253,9 @@ async def audit_replay(
 
 @router.get("/recording/{recording_id}")
 async def get_recording_status(
-    recording_id: int,
+    recording_id: str,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_premium)
 ):
     """Get the status of a recording and its analysis results."""
     recording = db.query(InteractionRecordingModel).filter(
@@ -307,9 +310,9 @@ async def get_recording_status(
 
 @router.get("/recording/{recording_id}/results")
 async def get_audit_results(
-    recording_id: int,
+    recording_id: str,
     db: Session = Depends(get_db),
-    current_user: UserModel = Depends(get_current_user)
+    current_user: UserModel = Depends(require_premium)
 ):
     """Get the full audit results for a completed recording."""
     recording = db.query(InteractionRecordingModel).filter(

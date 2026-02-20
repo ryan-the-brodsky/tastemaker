@@ -3,6 +3,7 @@ export interface User {
   email: string;
   first_name: string;
   last_name: string;
+  subscription_tier: string;
 }
 
 export interface AuthResponse {
@@ -30,7 +31,7 @@ export interface FontPairing {
 }
 
 export interface Session {
-  id: number;
+  id: string;
   name: string;
   phase: string;
   brand_colors: string | null;
@@ -103,7 +104,7 @@ export interface SessionProgress {
 }
 
 export interface StyleRule {
-  id: number;
+  id: string;
   rule_id: string;
   component_type: string | null;
   property: string;
@@ -127,7 +128,7 @@ export interface SkillPreview {
 }
 
 export interface SkillGenerateResponse {
-  skill_id: number;
+  skill_id: string;
   download_url: string;
   preview: SkillPreview;
 }
