@@ -16,15 +16,15 @@ class AnthropicProvider(AIProvider):
 
     Model tier mapping:
     - COST_EFFECTIVE: claude-haiku-4-5-20251001 (fast, cheap)
-    - CAPABLE: claude-sonnet-4-20250514 (balanced)
-    - FLAGSHIP: claude-opus-4-20250514 (most capable)
+    - CAPABLE: claude-sonnet-4-6 (balanced)
+    - FLAGSHIP: claude-opus-4-6 (most capable)
     """
 
     # Model mapping for each tier
     MODEL_MAP = {
         ModelTier.COST_EFFECTIVE: "claude-haiku-4-5-20251001",
-        ModelTier.CAPABLE: "claude-sonnet-4-20250514",
-        ModelTier.FLAGSHIP: "claude-opus-4-20250514",
+        ModelTier.CAPABLE: "claude-sonnet-4-6",
+        ModelTier.FLAGSHIP: "claude-opus-4-6",
     }
 
     def __init__(self, api_key: str):
