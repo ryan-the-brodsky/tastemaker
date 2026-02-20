@@ -40,7 +40,7 @@ router = APIRouter(prefix="/api/sessions", tags=["comparisons"])
 
 @router.get("/{session_id}/comparison", response_model=ComparisonResponse)
 def get_next_comparison(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -226,7 +226,7 @@ def get_next_comparison(
 
 @router.post("/{session_id}/comparison/{comparison_id}", response_model=SessionProgress)
 def submit_comparison_choice(
-    session_id: int,
+    session_id: str,
     comparison_id: int,
     choice_data: ComparisonChoice,
     current_user: UserModel = Depends(get_current_user),
@@ -472,7 +472,7 @@ class BatchComparisonResponse(BaseModel):
 
 @router.post("/{session_id}/comparisons/batch", response_model=BatchComparisonResponse)
 def get_batch_comparisons(
-    session_id: int,
+    session_id: str,
     request: BatchComparisonRequest,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -587,7 +587,7 @@ class LockInResponse(BaseModel):
 
 @router.post("/{session_id}/lock-in", response_model=LockInResponse)
 def lock_in_choice(
-    session_id: int,
+    session_id: str,
     choice_data: LockInChoice,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)

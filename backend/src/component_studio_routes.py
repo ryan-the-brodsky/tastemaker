@@ -31,7 +31,7 @@ import component_studio_service as service
 router = APIRouter(prefix="/api/sessions/{session_id}/studio", tags=["component_studio"])
 
 
-def _get_session(session_id: int, user: UserModel, db: Session) -> ExtractionSessionModel:
+def _get_session(session_id: str, user: UserModel, db: Session) -> ExtractionSessionModel:
     """Helper to fetch and validate a session."""
     session = (
         db.query(ExtractionSessionModel)
@@ -51,7 +51,7 @@ def _get_session(session_id: int, user: UserModel, db: Session) -> ExtractionSes
 
 @router.get("/progress", response_model=StudioProgressResponse)
 def get_studio_progress(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -62,7 +62,7 @@ def get_studio_progress(
 
 @router.get("/component/{component_type}/dimensions", response_model=ComponentDimensionsResponse)
 def get_component_dimensions(
-    session_id: int,
+    session_id: str,
     component_type: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -104,7 +104,7 @@ def get_component_dimensions(
 
 @router.get("/component/{component_type}/state", response_model=ComponentStateResponse)
 def get_component_state(
-    session_id: int,
+    session_id: str,
     component_type: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -123,7 +123,7 @@ def get_component_state(
 
 @router.post("/component/{component_type}/dimension")
 def submit_dimension_choice(
-    session_id: int,
+    session_id: str,
     component_type: str,
     choice: DimensionChoiceSubmit,
     current_user: UserModel = Depends(get_current_user),
@@ -154,7 +154,7 @@ def submit_dimension_choice(
 
 @router.post("/component/lock", response_model=LockComponentResponse)
 def lock_component(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -174,7 +174,7 @@ def lock_component(
 
 @router.get("/checkpoint/{checkpoint_id}", response_model=CheckpointData)
 def get_checkpoint(
-    session_id: int,
+    session_id: str,
     checkpoint_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -194,7 +194,7 @@ def get_checkpoint(
 
 @router.post("/checkpoint/{checkpoint_id}/approve")
 def approve_checkpoint(
-    session_id: int,
+    session_id: str,
     checkpoint_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -213,7 +213,7 @@ def approve_checkpoint(
 
 @router.post("/component/{component_type}/go-back")
 def go_back_to_component(
-    session_id: int,
+    session_id: str,
     component_type: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
@@ -232,7 +232,7 @@ def go_back_to_component(
 
 @router.get("/preview-styles")
 def get_preview_styles(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):

@@ -32,16 +32,20 @@ class MockupGenerationResponse(BaseModel):
 
 @router.get("/api/sessions/{session_id}/public-style", response_model=PublicStyleResponse)
 async def get_public_style(
-    session_id: int,
+    session_id: str,
+    current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """
-    Get public style data for a session (no auth required).
+    Get style data for a session.
     Used by MockupRender component to apply styles.
     """
     session = (
         db.query(ExtractionSessionModel)
-        .filter(ExtractionSessionModel.id == session_id)
+        .filter(
+            ExtractionSessionModel.id == session_id,
+            ExtractionSessionModel.user_id == current_user.id
+        )
         .first()
     )
 
@@ -68,7 +72,7 @@ async def get_public_style(
 
 @router.post("/api/sessions/{session_id}/generate-mockup-pngs", response_model=MockupGenerationResponse)
 async def generate_mockup_pngs_endpoint(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -121,7 +125,7 @@ async def generate_mockup_pngs_endpoint(
 
 @router.post("/api/sessions/{session_id}/upload-mockup")
 async def upload_mockup(
-    session_id: int,
+    session_id: str,
     mockup_type: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)

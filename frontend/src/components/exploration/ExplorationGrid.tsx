@@ -22,7 +22,7 @@ interface ColorPalette {
 }
 
 interface ExplorationGridProps {
-  sessionId: number;
+  sessionId: string;
   explorationType: 'palette' | 'typography';
   onPhaseComplete: (newPhase: string) => void;
 }

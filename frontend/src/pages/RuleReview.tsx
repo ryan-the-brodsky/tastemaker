@@ -42,7 +42,7 @@ export default function RuleReview() {
   useEffect(() => {
     if (sessionId && !initialized.current) {
       initialized.current = true;
-      selectSession(parseInt(sessionId));
+      selectSession(sessionId);
     }
   }, [sessionId]);
 

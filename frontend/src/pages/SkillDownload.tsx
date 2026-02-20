@@ -22,7 +22,7 @@ export default function SkillDownload() {
   useEffect(() => {
     if (sessionId && !initialized.current) {
       initialized.current = true;
-      selectSession(parseInt(sessionId)).then(() => {
+      selectSession(sessionId).then(() => {
         // If no skill passed via state, generate one
         if (!skill) {
           handleGenerate();
@@ -81,7 +81,7 @@ export default function SkillDownload() {
     setError(null);
 
     try {
-      const blob = await api.exportComponentLibrary(parseInt(sessionId), 'react');
+      const blob = await api.exportComponentLibrary(sessionId, 'react');
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

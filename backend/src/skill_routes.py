@@ -21,7 +21,7 @@ router = APIRouter(tags=["skills"])
 
 @router.post("/api/sessions/{session_id}/generate-skill", response_model=SkillGenerateResponse)
 def generate_skill(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -115,7 +115,7 @@ def generate_skill(
 
 @router.get("/api/skills/{skill_id}/download")
 def download_skill(
-    skill_id: int,
+    skill_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

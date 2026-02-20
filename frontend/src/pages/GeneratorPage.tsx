@@ -36,7 +36,7 @@ const OUTPUT_FORMATS = [
 
 export default function GeneratorPage() {
   const { sessions, loadSessions } = useSession();
-  const [selectedSession, setSelectedSession] = useState<number | null>(null);
+  const [selectedSession, setSelectedSession] = useState<string | null>(null);
   const [componentType, setComponentType] = useState<string>('button');
   const [variant, setVariant] = useState<string>('primary');
   const [outputFormat, setOutputFormat] = useState<string>('react');
@@ -214,7 +214,7 @@ export default function GeneratorPage() {
                 <select
                   className="w-full px-3 py-2 border rounded-lg"
                   value={selectedSession || ''}
-                  onChange={(e) => setSelectedSession(Number(e.target.value) || null)}
+                  onChange={(e) => setSelectedSession(e.target.value || null)}
                   agent-handle="generator-select-session"
                 >
                   <option value="">Select a session...</option>

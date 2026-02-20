@@ -17,7 +17,7 @@ router = APIRouter(tags=["generator"])
 
 
 class GenerateRequest(BaseModel):
-    session_id: int
+    session_id: str
     component_type: str
     variant: str
     output_format: str  # 'react', 'html', 'vue'
@@ -291,7 +291,7 @@ VARIANTS = {
 
 @router.post("/api/generate/library")
 async def export_component_library(
-    session_id: int = Form(...),
+    session_id: str = Form(...),
     output_format: str = Form(default="react"),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)

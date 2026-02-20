@@ -22,7 +22,7 @@ router = APIRouter(prefix="/api/sessions", tags=["rules"])
 
 @router.get("/{session_id}/rules", response_model=List[StyleRuleResponse])
 def get_session_rules(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -101,7 +101,7 @@ def get_session_rules(
 
 @router.post("/{session_id}/rules", response_model=StyleRuleResponse, status_code=status.HTTP_201_CREATED)
 def add_stated_rule(
-    session_id: int,
+    session_id: str,
     rule_data: RuleCreate,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -180,7 +180,7 @@ def add_stated_rule(
 
 @router.patch("/{session_id}/rules/{rule_id}", response_model=StyleRuleResponse)
 def update_rule(
-    session_id: int,
+    session_id: str,
     rule_id: str,
     update_data: RuleUpdate,
     current_user: UserModel = Depends(get_current_user),
@@ -249,7 +249,7 @@ def update_rule(
 
 @router.delete("/{session_id}/rules/{rule_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_rule(
-    session_id: int,
+    session_id: str,
     rule_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)

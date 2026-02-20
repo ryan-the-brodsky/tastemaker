@@ -30,7 +30,7 @@ export default function ExtractionSession() {
   useEffect(() => {
     if (sessionId && !initialized.current) {
       initialized.current = true;
-      selectSession(parseInt(sessionId));
+      selectSession(sessionId);
     }
   }, [sessionId]);
 
@@ -215,7 +215,7 @@ export default function ExtractionSession() {
           <ErrorBoundary key={`error-boundary-${currentSession.phase}`}>
             <ExplorationGrid
               key={`exploration-${currentSession.phase}`}
-              sessionId={parseInt(sessionId!)}
+              sessionId={sessionId!}
               explorationType={currentSession.phase === 'color_exploration' ? 'palette' : 'typography'}
               onPhaseComplete={handleExplorationPhaseComplete}
             />

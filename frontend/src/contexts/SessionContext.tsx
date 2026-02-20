@@ -19,7 +19,7 @@ interface SessionContextType {
   comparisonQueue: Comparison[];
   loadSessions: () => Promise<void>;
   createSession: (name: string, projectDescription?: string, brandColors?: string[]) => Promise<Session>;
-  selectSession: (sessionId: number) => Promise<void>;
+  selectSession: (sessionId: string) => Promise<void>;
   refreshSession: () => Promise<void>;
   loadComparison: () => Promise<void>;
   loadBatchComparisons: () => Promise<void>;
@@ -84,7 +84,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const selectSession = async (sessionId: number) => {
+  const selectSession = async (sessionId: string) => {
     setLoading(true);
     setError(null);
     try {

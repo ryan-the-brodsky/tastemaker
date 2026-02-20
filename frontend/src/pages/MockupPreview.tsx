@@ -55,14 +55,14 @@ export default function MockupPreview() {
   useEffect(() => {
     if (sessionId && !initialized.current) {
       initialized.current = true;
-      selectSession(parseInt(sessionId));
+      selectSession(sessionId);
     }
   }, [sessionId, selectSession]);
 
   // Load component styles from studio
   useEffect(() => {
     if (sessionId) {
-      api.getPreviewStyles(parseInt(sessionId))
+      api.getPreviewStyles(sessionId)
         .then(styles => setComponentStyles(styles))
         .catch(() => {}); // Gracefully handle if no studio data exists
     }

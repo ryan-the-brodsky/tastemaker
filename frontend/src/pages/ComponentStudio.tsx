@@ -47,7 +47,7 @@ export default function ComponentStudio() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const sid = parseInt(sessionId || '0');
+  const sid = sessionId || '';
 
   // Init session
   useEffect(() => {

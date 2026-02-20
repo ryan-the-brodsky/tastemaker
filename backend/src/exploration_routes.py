@@ -97,7 +97,7 @@ class ExplorationProgressResponse(BaseModel):
 
 @router.get("/{session_id}/explore/palettes", response_model=ExplorationResponse)
 def get_palette_options(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -144,7 +144,7 @@ def get_palette_options(
 
 @router.post("/{session_id}/explore/palettes/select", response_model=ExplorationProgressResponse)
 def select_palette(
-    session_id: int,
+    session_id: str,
     selection: ExplorationSelection,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -230,7 +230,7 @@ def select_palette(
 
 @router.get("/{session_id}/explore/typography", response_model=ExplorationResponse)
 def get_typography_options(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -272,7 +272,7 @@ def get_typography_options(
 
 @router.post("/{session_id}/explore/typography/select", response_model=ExplorationProgressResponse)
 def select_typography(
-    session_id: int,
+    session_id: str,
     selection: ExplorationSelection,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -353,7 +353,7 @@ def select_typography(
 # Helper Functions
 # ============================================================================
 
-def _get_session_or_404(session_id: int, user_id: int, db: Session) -> ExtractionSessionModel:
+def _get_session_or_404(session_id: str, user_id: str, db: Session) -> ExtractionSessionModel:
     """Get session or raise 404."""
     session = (
         db.query(ExtractionSessionModel)

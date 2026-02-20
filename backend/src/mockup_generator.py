@@ -23,7 +23,7 @@ MOCKUP_HEIGHT = 800
 
 
 async def generate_mockup_pngs(
-    session_id: int,
+    session_id: str,
     frontend_url: str = "http://localhost:5173",
     output_dir: Optional[str] = None
 ) -> dict:
@@ -105,7 +105,7 @@ async def generate_mockup_pngs(
 
 
 def generate_mockup_pngs_sync(
-    session_id: int,
+    session_id: str,
     frontend_url: str = "http://localhost:5173",
     output_dir: Optional[str] = None
 ) -> dict:
@@ -115,7 +115,7 @@ def generate_mockup_pngs_sync(
     return asyncio.run(generate_mockup_pngs(session_id, frontend_url, output_dir))
 
 
-def get_mockup_paths(session_id: int) -> dict:
+def get_mockup_paths(session_id: str) -> dict:
     """
     Get paths to existing mockup PNGs for a session.
     Returns dict mapping mockup type to file path.
@@ -134,7 +134,7 @@ def get_mockup_paths(session_id: int) -> dict:
     return mockups
 
 
-def mockups_exist(session_id: int) -> bool:
+def mockups_exist(session_id: str) -> bool:
     """
     Check if all mockup PNGs exist for a session.
     """

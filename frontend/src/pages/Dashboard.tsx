@@ -37,7 +37,7 @@ export default function Dashboard() {
     }
   };
 
-  const handleContinueSession = async (sessionId: number) => {
+  const handleContinueSession = async (sessionId: string) => {
     try {
       await selectSession(sessionId);
       navigate(`/session/${sessionId}`);

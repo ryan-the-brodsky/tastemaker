@@ -8,7 +8,7 @@ from pattern_analyzer import aggregate_property_preferences
 
 def synthesize_rules_from_patterns(
     comparison_results: List[dict],
-    session_id: int,
+    session_id: str,
     min_confidence: float = 0.6
 ) -> List[dict]:
     """

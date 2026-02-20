@@ -17,7 +17,7 @@ def generate_skill_package(
     username: str,
     rules: List[dict],
     include_baseline: bool = True,
-    session_id: int = None,
+    session_id: str = None,
     chosen_colors: dict = None,
     chosen_typography: dict = None
 ) -> str:
@@ -71,7 +71,7 @@ def generate_skill_package(
     return zip_path
 
 
-def _include_mockup_pngs(package_dir: str, session_id: int):
+def _include_mockup_pngs(package_dir: str, session_id: str):
     """Include mockup PNGs in the package if they exist."""
     import shutil
 
@@ -704,7 +704,7 @@ if __name__ == "__main__":
         f.write(content)
 
 
-def get_skill_preview(rules: List[dict], session_id: int = None) -> dict:
+def get_skill_preview(rules: List[dict], session_id: str = None) -> dict:
     """
     Generate a preview of what the skill package will contain.
     """

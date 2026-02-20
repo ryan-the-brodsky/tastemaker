@@ -91,7 +91,7 @@ def list_sessions(
 
 @router.get("/{session_id}", response_model=SessionDetailResponse)
 def get_session(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -175,7 +175,7 @@ def get_session(
 
 @router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_session(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

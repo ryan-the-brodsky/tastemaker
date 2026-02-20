@@ -281,7 +281,7 @@ def apply_rules_to_extracted_values(
 @router.post("/api/audit/screenshot", response_model=AuditResult)
 async def audit_screenshot(
     file: UploadFile = File(...),
-    session_id: int = Form(...),
+    session_id: str = Form(...),
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -463,7 +463,7 @@ Large text is 18px+ regular or 14px+ bold. Return ONLY the JSON, no explanation.
 
 class UrlAuditRequest(BaseModel):
     url: str
-    session_id: int
+    session_id: str
 
 
 @router.post("/api/audit/url", response_model=AuditResult)
